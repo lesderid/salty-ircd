@@ -68,10 +68,10 @@ struct Message
 		if(parameters.length > 1)
 		{
 			message ~= parameters[0 .. $-1].join(' ') ~ " ";
-			if(parameters[$-1].canFind(' ') || prefixedParameter)
-			{
-				message ~= ":";
-			}
+		}
+		if(parameters[$-1].canFind(' ') || prefixedParameter)
+		{
+			message ~= ":";
 		}
 		message ~= parameters[$-1];
 
