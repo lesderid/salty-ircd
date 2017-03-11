@@ -56,9 +56,9 @@ class Connection
 					writeln("unused: " ~ message.parameters[2]);
 
 					send(Message("localhost", "001", [nick, "Welcome to the Internet Relay Network " ~ nick ~ "!" ~ user ~ "@hostname"], true));
-					send(Message("localhost", "002", [nick, "Your host is localhost, running version " ~ packageVersion], true));
+					send(Message("localhost", "002", [nick, "Your host is localhost, running version salty-ircd-" ~ packageVersion], true));
 					send(Message("localhost", "003", [nick, "This server was created " ~ packageTimestampISO], true));
-					send(Message("localhost", "004", [nick, "localhost", packageVersion, "w", "snt"]));
+					send(Message("localhost", "004", [nick, "localhost", "salty-ircd-" ~ packageVersion, "w", "snt"]));
 					break;
 				case "PING":
 					send(Message(null, "PONG", [message.parameters[0]], true));
