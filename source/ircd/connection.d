@@ -6,13 +6,13 @@ import std.string;
 import vibe.core.core;
 import vibe.stream.operations;
 
-import ircd.packageVersion;
-
 import ircd.message;
+import ircd.server;
 
 class Connection
 {
 	private TCPConnection _connection;
+	private Server _server;
 
 	//TODO: Make into auto-properties (via template)
 	string nick;
@@ -21,9 +21,10 @@ class Connection
 
 	bool connected;
 
-	this(TCPConnection connection)
+	this(TCPConnection connection, Server server)
 	{
 		_connection = connection;
+		_server = server;
 	}
 
 	void send(Message message)
@@ -56,9 +57,9 @@ class Connection
 					writeln("unused: " ~ message.parameters[2]);
 
 					send(Message("localhost", "001", [nick, "Welcome to the Internet Relay Network " ~ nick ~ "!" ~ user ~ "@hostname"], true));
-					send(Message("localhost", "002", [nick, "Your host is localhost, running version salty-ircd-" ~ packageVersion], true));
-					send(Message("localhost", "003", [nick, "This server was created " ~ packageTimestampISO], true));
-					send(Message("localhost", "004", [nick, "localhost", "salty-ircd-" ~ packageVersion, "w", "snt"]));
+					send(Message("localhost", "002", [nick, "Your host is " ~ _server.name ~ ", running version " ~ _server.versionString], true));
+					send(Message("localhost", "003", [nick, "This server was created " ~ _server.creationDate], true));
+					send(Message("localhost", "004", [nick, _server.name, _server.versionString, "w", "snt"]));
 					break;
 				case "PING":
 					send(Message(null, "PONG", [message.parameters[0]], true));
