@@ -5,7 +5,7 @@ import std.algorithm;
 import std.range;
 import core.time;
 
-import vibe.d;
+import vibe.core.core;
 
 import ircd.message;
 import ircd.connection;

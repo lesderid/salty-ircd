@@ -2,10 +2,14 @@
 	"fileVersion": 1,
 	"versions": {
 		"diet-ng": "1.2.0",
+		"eventcore": "0.8.8",
+		"gen-package-version": "1.0.5",
 		"libasync": "0.7.9",
 		"libevent": "2.0.2+2.0.16",
 		"memutils": "0.4.9",
 		"openssl": "1.1.5+1.0.1g",
+		"scriptlike": "0.9.7",
+		"taggedalgebraic": "0.10.5",
 		"vibe-d": "0.7.30"
 	}
 }

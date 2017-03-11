@@ -1,8 +1,12 @@
 module ircd.connection;
 
 import std.stdio;
+import std.string;
 
-import vibe.d;
+import vibe.core.core;
+import vibe.stream.operations;
+
+import ircd.packageVersion;
 
 import ircd.message;
 
@@ -37,6 +41,7 @@ class Connection
 			auto message = Message.fromString((cast(string)_connection.readLine()).chomp);
 			writeln("C> " ~ message.toString);
 
+			//TODO: If RFC-strictness is off, ignore case
 			switch(message.command)
 			{
 				case "NICK":
@@ -51,9 +56,9 @@ class Connection
 					writeln("unused: " ~ message.parameters[2]);
 
 					send(Message("localhost", "001", [nick, "Welcome to the Internet Relay Network " ~ nick ~ "!" ~ user ~ "@hostname"], true));
-					send(Message("localhost", "002", [nick, "Your host is ircd, running version 0.01"], true));
-					send(Message("localhost", "003", [nick, "This server was created 2017-03-11"], true));
-					send(Message("localhost", "004", [nick, "ircd", "0.01", "w", "snt"]));
+					send(Message("localhost", "002", [nick, "Your host is localhost, running version " ~ packageVersion], true));
+					send(Message("localhost", "003", [nick, "This server was created " ~ packageTimestampISO], true));
+					send(Message("localhost", "004", [nick, "localhost", packageVersion, "w", "snt"]));
 					break;
 				case "PING":
 					send(Message(null, "PONG", [message.parameters[0]], true));

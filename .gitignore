@@ -5,3 +5,5 @@ __dummy.html
 *.obj
 __test__*__
 /ircd
+
+source/ircd/packageVersion.d
