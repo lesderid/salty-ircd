@@ -64,6 +64,7 @@ struct Message
 		{
 			message ~= parameters[0 .. $-1].join(' ') ~ " ";
 		}
+
 		if(parameters[$-1].canFind(' ') || prefixedParameter)
 		{
 			message ~= ":";

@@ -42,16 +42,13 @@ class Connection
 				case "NICK":
 					//TODO: Check availablity and validity etc.
 					nick = message.parameters[0];
-					writeln("nick: " ~ nick);
 					break;
 				case "USER":
 					user = message.parameters[0];
 					realname = message.parameters[3];
 
-					writeln("user: " ~ user);
 					writeln("mode: " ~ message.parameters[1]);
 					writeln("unused: " ~ message.parameters[2]);
-					writeln("realname: " ~ realname);
 
 					send(Message("localhost", "001", [nick, "Welcome to the Internet Relay Network " ~ nick ~ "!" ~ user ~ "@hostname"], true));
 					send(Message("localhost", "002", [nick, "Your host is ircd, running version 0.01"], true));
@@ -59,7 +56,10 @@ class Connection
 					send(Message("localhost", "004", [nick, "ircd", "0.01", "w", "snt"]));
 					break;
 				case "PING":
-					send(Message(null, "PONG", [message.parameters[0]]));
+					send(Message(null, "PONG", [message.parameters[0]], true));
+					break;
+				case "PONG":
+					//TODO: Handle pong
 					break;
 				case "QUIT":
 					send(Message(null, "ERROR", ["Bye!"]));

@@ -2,6 +2,7 @@ module ircd.app;
 
 import std.stdio;
 import std.algorithm;
+import std.range;
 import core.time;
 
 import vibe.d;
@@ -12,6 +13,18 @@ import ircd.connection;
 shared static this()
 {
 	Connection[] connections = [];
+
+	runTask(delegate()
+	{
+		while(true)
+		{
+			foreach(connection; connections)
+			{
+				connection.send(Message(null, "PING", [connection.nick]));
+			}
+			sleep(10.seconds);
+		}
+	});
 
 	listenTCP(6667, delegate(TCPConnection connection)
 	{
