@@ -79,15 +79,51 @@ struct Message
 	}
 }
 
+void send(TCPConnection connection, Message message)
+{
+	string messageString = message.toString;
+	writeln("S> " ~ messageString);
+	connection.write(messageString ~ "\r\n");
+}
+
 void handleConnection(TCPConnection connection)
 {
-	writeln("connection opened");
+	string nick;
+	string user;
+	string realname;
 	while(connection.connected)
 	{
 		auto message = Message.fromString((cast(string)connection.readLine()).chomp);
 		writeln("C> " ~ message.toString);
+
+		switch(message.command)
+		{
+			case "NICK":
+				nick = message.parameters[0];
+				writeln("nick: " ~ nick);
+				break;
+			case "USER":
+				user = message.parameters[0];
+				realname = message.parameters[3];
+
+				writeln("user: " ~ user);
+				writeln("mode: " ~ message.parameters[1]);
+				writeln("unused: " ~ message.parameters[2]);
+				writeln("realname: " ~ realname);
+
+				connection.send(Message("localhost", "001", [nick, "Welcome to the Internet Relay Network " ~ nick ~ "!" ~ user ~ "@hostname"], true));
+				connection.send(Message("localhost", "002", [nick, "Your host is ircd, running version 0.01"], true));
+				connection.send(Message("localhost", "003", [nick, "This server was created 2017-03-11"], true));
+				connection.send(Message("localhost", "004", [nick, "ircd", "0.01", "w", "snt"]));
+				break;
+			case "PING":
+				connection.send(Message(null, "PONG", [message.parameters[0]]));
+				break;
+			default:
+				writeln("unknown command '", message.command, "'");
+				break;
+		}
 	}
-	writeln("connection closed");
 }
 
 
