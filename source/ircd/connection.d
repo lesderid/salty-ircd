@@ -139,6 +139,15 @@ class Connection
 	{
 		connected = false;
 		send(Message(_server.name, "ERROR", ["Bye!"]));
+
+		if(message.parameters.length > 0)
+		{
+			_server.quit(this, message.parameters[0]);
+		}
+		else
+		{
+			_server.quit(this, null);
+		}
 	}
 
 	void onJoin(Message message)

@@ -98,6 +98,38 @@ class Server
 		}
 
 		channel.members = channel.members.remove!(m => m == connection);
+
+		if(channel.members.length == 0)
+		{
+			channels = channels.remove!(c => c == channel);
+		}
+	}
+
+	void quit(Connection connection, string quitMessage)
+	{
+		Connection[] peers;
+		foreach(channel; connection.channels)
+		{
+			peers ~= channel.members;
+			channel.members = channel.members.remove!(m => m == connection);
+			if(channel.members.length == 0)
+			{
+				channels = channels.remove!(c => c == channel);
+			}
+		}
+		peers = peers.sort().uniq.filter!(c => c != connection).array;
+
+		foreach(peer; peers)
+		{
+			if(quitMessage !is null)
+			{
+				peer.send(Message(connection.mask, "QUIT", [quitMessage], true));
+			}
+			else
+			{
+				peer.send(Message(connection.mask, "QUIT"));
+			}
+		}
 	}
 
 	void listen(ushort port = 6667)
