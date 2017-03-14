@@ -5,6 +5,7 @@ import std.string;
 import std.algorithm;
 import std.range;
 import std.conv;
+import std.socket;
 
 import vibe.core.core;
 import vibe.stream.operations;
@@ -126,6 +127,7 @@ class Connection
 		writeln("mode: " ~ message.parameters[1]);
 		writeln("unused: " ~ message.parameters[2]);
 		realname = message.parameters[3];
+		hostname = getHost();
 
 		send(Message(_server.name, "001", [nick, "Welcome to the Internet Relay Network " ~ mask], true));
 		send(Message(_server.name, "002", [nick, "Your host is " ~ _server.name ~ ", running version " ~ _server.versionString], true));
@@ -176,6 +178,17 @@ class Connection
 				_server.part(this, channel, null);
 			}
 		}
+	}
+
+	string getHost()
+	{
+		auto address = parseAddress(_connection.peerAddress);
+		auto hostname = address.toHostNameString;
+		if(hostname is null)
+		{
+			hostname = address.toAddrString;
+		}
+		return hostname;
 	}
 }
 
