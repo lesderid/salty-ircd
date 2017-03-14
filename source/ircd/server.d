@@ -127,7 +127,7 @@ class Server
 			}
 			else
 			{
-				peer.send(Message(connection.mask, "QUIT"));
+				peer.send(Message(connection.mask, "QUIT", [connection.nick], true));
 			}
 		}
 	}

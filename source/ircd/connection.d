@@ -120,7 +120,7 @@ class Connection
 					break;
 				default:
 					writeln("unknown command '", message.command, "'");
-					send(Message(_server.name, "421", [nick, "Unknown command"]));
+					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
 					break;
 			}
 		}

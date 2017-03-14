@@ -24,6 +24,11 @@ struct Message
 			line = line[prefix.length + 1 .. $];
 		}
 
+		if(!line.canFind(' '))
+		{
+			return Message(prefix, line, [], false);
+		}
+
 		auto command = line[0 .. line.indexOf(' ')];
 		line = line[command.length + 1 .. $];
 		string[] params = [];
@@ -58,6 +63,11 @@ struct Message
 		if(prefix != null)
 		{
 			message = ":" ~ prefix ~ " ";
+		}
+
+		if(parameters.length == 0)
+		{
+			return message ~ command;
 		}
 
 		message ~= command ~ " ";
