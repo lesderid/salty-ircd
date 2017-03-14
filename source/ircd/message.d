@@ -6,6 +6,7 @@ import std.array;
 import std.algorithm;
 import std.conv;
 
+//TODO: Make this a class
 struct Message
 {
 	string prefix;
