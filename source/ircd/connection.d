@@ -27,7 +27,7 @@ class Connection
 
 	@property string mask() { return nick ~ "!" ~ user ~ "@" ~ hostname; }
 
-	@property Channel[] channels() { return _server.channels.filter!(c => c.members.canFind(this)).array; }
+	@property auto channels() { return _server.channels.filter!(c => c.members.canFind(this)); }
 
 	bool connected;
 
@@ -39,11 +39,35 @@ class Connection
 		connected = _connection.connected;
 	}
 
+	override int opCmp(Object o)
+	{
+		Connection other;
+		if((other = cast(Connection)other) !is null)
+		{
+			return cmp(nick, other.nick);
+		}
+		return 0;
+	}
+
 	void send(Message message)
 	{
 		string messageString = message.toString;
 		writeln("S> " ~ messageString ~ " (" ~ nick.to!string ~ ")");
 		_connection.write(messageString ~ "\r\n");
+	}
+
+	//sends the message to all clients who have a channel in common with this client
+	void sendToPeers(Message message)
+	{
+		if(channels.empty)
+		{
+			return;
+		}
+
+		foreach(connection; channels.map!(c => c.members).fold!((a, b) => a ~ b).sort().uniq.filter!(c => c != this))
+		{
+			connection.send(message);
+		}
 	}
 
 	void onDisconnect()
@@ -96,7 +120,7 @@ class Connection
 					break;
 				default:
 					writeln("unknown command '", message.command, "'");
-					send(Message(_server.name, "421", ["Unknown command"]));
+					send(Message(_server.name, "421", [nick, "Unknown command"]));
 					break;
 			}
 		}
@@ -109,10 +133,7 @@ class Connection
 		auto newNick = message.parameters[0];
 		if(nick !is null)
 		{
-			foreach(connection; channels.map!(c => c.members).fold!((a, b) => a ~ b).sort().uniq.filter!(c => c != this))
-			{
-				connection.send(Message(nick, "NICK", [newNick]));
-			}
+			sendToPeers(Message(nick, "NICK", [newNick]));
 			send(Message(nick, "NICK", [newNick]));
 		}
 
@@ -155,7 +176,7 @@ class Connection
 		auto channel = message.parameters[0];
 		if(!Server.isValidChannelName(channel))
 		{
-			send(Message(_server.name, "403", [channel, "No such channel"], true));
+			send(Message(_server.name, "403", [nick, channel, "No such channel"], true));
 		}
 		else
 		{
@@ -170,11 +191,11 @@ class Connection
 		auto channel = message.parameters[0];
 		if(!Server.isValidChannelName(channel))
 		{
-			send(Message(_server.name, "403", [channel, "No such channel"], true));
+			send(Message(_server.name, "403", [nick, channel, "No such channel"], true));
 		}
 		else if(!channels.canFind!(c => c.name == channel))
 		{
-			send(Message(_server.name, "442", [channel, "You're not on that channel"], true));
+			send(Message(_server.name, "442", [nick, channel, "You're not on that channel"], true));
 		}
 		else
 		{

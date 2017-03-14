@@ -34,7 +34,7 @@ class Channel
 	{
 		enum channelType = "="; //TODO: Support secret and private channels
 
-		connection.send(Message(_server.name, "353", [channelType, name, members.map!(m => m.nick).join(' ')], true));
-		connection.send(Message(_server.name, "366", [name, "End of NAMES list"], true));
+		connection.send(Message(_server.name, "353", [connection.nick, channelType, name, members.map!(m => m.nick).join(' ')], true));
+		connection.send(Message(_server.name, "366", [connection.nick, name, "End of NAMES list"], true));
 	}
 }

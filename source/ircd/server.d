@@ -83,7 +83,7 @@ class Server
 
 	void part(Connection connection, string channelName, string partMessage)
 	{
-		auto channel = connection.channels.find!(c => c.name == channelName)[0];
+		auto channel = connection.channels.array.find!(c => c.name == channelName)[0];
 
 		foreach(member; channel.members)
 		{
