@@ -37,4 +37,12 @@ class Channel
 		connection.send(Message(_server.name, "353", [connection.nick, channelType, name, members.map!(m => m.nick).join(' ')], true));
 		connection.send(Message(_server.name, "366", [connection.nick, name, "End of NAMES list"], true));
 	}
+
+	void sendPrivMsg(Connection sender, string text)
+	{
+		foreach(member; members.filter!(m => m.nick != sender.nick))
+		{
+			member.send(Message(sender.mask, "PRIVMSG", [name, text], true));
+		}
+	}
 }

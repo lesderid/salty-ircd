@@ -58,6 +58,12 @@ class Server
 		return (name.startsWith('#') || name.startsWith('&')) && name.length <= 200;
 	}
 
+	static bool isValidNick(string name)
+	{
+		//TODO: Use the real rules
+		return !name.startsWith('#') && !name.startsWith('&') && name.length <= 9;
+	}
+
 	void join(Connection connection, string channelName)
 	{
 		auto channelRange = channels.find!(c => c.name == channelName);
@@ -130,6 +136,18 @@ class Server
 				peer.send(Message(connection.mask, "QUIT", [connection.nick], true));
 			}
 		}
+	}
+
+	void sendToChannel(Connection sender, string target, string text)
+	{
+		auto channel = channels.find!(c => c.name == target)[0];
+		channel.sendPrivMsg(sender, text);
+	}
+
+	void sendToUser(Connection sender, string target, string text)
+	{
+		auto user = connections.find!(c => c.nick == target)[0];
+		user.send(Message(sender.mask, "PRIVMSG", [target, text], true));
 	}
 
 	void listen(ushort port = 6667)

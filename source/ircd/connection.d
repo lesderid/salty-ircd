@@ -118,6 +118,9 @@ class Connection
 				case "PART":
 					onPart(message);
 					break;
+				case "PRIVMSG":
+					onPrivMsg(message);
+					break;
 				default:
 					writeln("unknown command '", message.command, "'");
 					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
@@ -176,7 +179,7 @@ class Connection
 		auto channel = message.parameters[0];
 		if(!Server.isValidChannelName(channel))
 		{
-			send(Message(_server.name, "403", [nick, channel, "No such channel"], true));
+			sendErrNoSuchChannel(channel);
 		}
 		else
 		{
@@ -191,7 +194,7 @@ class Connection
 		auto channel = message.parameters[0];
 		if(!Server.isValidChannelName(channel))
 		{
-			send(Message(_server.name, "403", [nick, channel, "No such channel"], true));
+			sendErrNoSuchChannel(channel);
 		}
 		else if(!channels.canFind!(c => c.name == channel))
 		{
@@ -208,6 +211,62 @@ class Connection
 				_server.part(this, channel, null);
 			}
 		}
+	}
+
+	void onPrivMsg(Message message)
+	{
+		//TODO: Support special message targets
+		auto target = message.parameters[0];
+		auto text = message.parameters[1];
+
+		if(message.parameters.length == 0)
+		{
+			send(Message(_server.name, "411", [nick, "No recipient given (PRIVMSG)"], true));
+			return;
+		}
+		if(message.parameters.length == 1)
+		{
+			send(Message(_server.name, "412", [nick, "No text to send"], true));
+			return;
+		}
+
+		if(Server.isValidChannelName(target))
+		{
+			if(!_server.channels.canFind!(c => c.name == target))
+			{
+				sendErrNoSuchNick(target);
+			}
+			else
+			{
+				_server.sendToChannel(this, target, text);
+			}
+		}
+		else if(Server.isValidNick(target))
+		{
+			if(!_server.connections.canFind!(c => c.nick == target))
+			{
+				sendErrNoSuchNick(target);
+			}
+			else
+			{
+				_server.sendToUser(this, target, text);
+			}
+		}
+		else
+		{
+			//is this the right response?
+			sendErrNoSuchNick(target);
+		}
+	}
+
+	void sendErrNoSuchChannel(string name)
+	{
+		send(Message(_server.name, "403", [nick, name, "No such channel"], true));
+	}
+
+	void sendErrNoSuchNick(string name)
+	{
+		send(Message(_server.name, "401", [nick, name, "No such nick/channel"], true));
 	}
 
 	string getHost()

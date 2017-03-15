@@ -24,6 +24,7 @@ struct Message
 			line = line[prefix.length + 1 .. $];
 		}
 
+		//stop early when no space character can be found (message without parameters)
 		if(!line.canFind(' '))
 		{
 			return Message(prefix, line, [], false);
