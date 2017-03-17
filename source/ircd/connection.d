@@ -137,6 +137,7 @@ class Connection
 		if(message.parameters.length == 0)
 		{
 			sendErrNoNickGiven();
+			return;
 		}
 
 		auto newNick = message.parameters[0];
