@@ -64,6 +64,11 @@ class Server
 		return !name.startsWith('#') && !name.startsWith('&') && name.length <= 9;
 	}
 
+	bool isNickAvailable(string nick)
+	{
+		return !connections.canFind!(c => c.nick == nick);
+	}
+
 	void join(Connection connection, string channelName)
 	{
 		auto channelRange = channels.find!(c => c.name == channelName);

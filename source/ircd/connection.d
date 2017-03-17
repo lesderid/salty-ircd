@@ -133,7 +133,19 @@ class Connection
 
 	void onNick(Message message)
 	{
+		if(message.parameters.length == 0)
+		{
+			sendErrNoNickGiven();
+		}
+
 		auto newNick = message.parameters[0];
+
+		if(!_server.isNickAvailable(newNick))
+		{
+			send(Message(_server.name, "433", [nick, newNick, "Nickname already in use"]));
+			return;
+		}
+
 		if(nick !is null)
 		{
 			sendToPeers(Message(nick, "NICK", [newNick]));
@@ -254,7 +266,7 @@ class Connection
 		}
 		else
 		{
-			//is this the right response?
+			//is this the right reply?
 			sendErrNoSuchNick(target);
 		}
 	}
@@ -267,6 +279,11 @@ class Connection
 	void sendErrNoSuchNick(string name)
 	{
 		send(Message(_server.name, "401", [nick, name, "No such nick/channel"], true));
+	}
+
+	void sendErrNoNickGiven()
+	{
+		send(Message(_server.name, "431", [nick, "No nickname given"], true));
 	}
 
 	string getHost()
