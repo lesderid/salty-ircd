@@ -30,6 +30,8 @@ class Connection
 
 	@property auto channels() { return _server.channels.filter!(c => c.members.canFind(this)); }
 
+	@property bool registered() { return nick !is null && user !is null; }
+
 	bool connected;
 
 	this(TCPConnection connection, Server server)
@@ -114,13 +116,16 @@ class Connection
 					onQuit(message);
 					break;
 				case "JOIN":
-					onJoin(message);
+					if(!registered) sendErrNotRegistered();
+					else onJoin(message);
 					break;
 				case "PART":
-					onPart(message);
+					if(!registered) sendErrNotRegistered();
+					else onPart(message);
 					break;
 				case "PRIVMSG":
-					onPrivMsg(message);
+					if(!registered) sendErrNotRegistered();
+					else onPrivMsg(message);
 					break;
 				default:
 					writeln("unknown command '", message.command, "'");
@@ -154,8 +159,15 @@ class Connection
 			send(Message(nick, "NICK", [newNick]));
 		}
 
-		//TODO: Check availablity and validity etc.
+		auto wasRegistered = registered;
+
+		//TODO: Check validity etc.
 		nick = newNick;
+
+		if(!wasRegistered)
+		{
+			sendWelcome();
+		}
 	}
 
 	void onUser(Message message)
@@ -178,10 +190,10 @@ class Connection
 		realname = message.parameters[3];
 		hostname = getHost();
 
-		send(Message(_server.name, "001", [nick, "Welcome to the Internet Relay Network " ~ mask], true));
-		send(Message(_server.name, "002", [nick, "Your host is " ~ _server.name ~ ", running version " ~ _server.versionString], true));
-		send(Message(_server.name, "003", [nick, "This server was created " ~ _server.creationDate], true));
-		send(Message(_server.name, "004", [nick, _server.name, _server.versionString, "w", "snt"]));
+		if(registered)
+		{
+			sendWelcome();
+		}
 	}
 
 	void onQuit(Message message)
@@ -311,9 +323,22 @@ class Connection
 		send(Message(_server.name, "431", [nick, "No nickname given"], true));
 	}
 
+	void sendErrNotRegistered()
+	{
+		send(Message(_server.name, "451", ["(You)", "You have not registered"], true));
+	}
+
 	void sendErrNeedMoreParams(string command)
 	{
 		send(Message(_server.name, "461", [nick, command, "Not enough parameters"], true));
+	}
+
+	void sendWelcome()
+	{
+		send(Message(_server.name, "001", [nick, "Welcome to the Internet Relay Network " ~ mask], true));
+		send(Message(_server.name, "002", [nick, "Your host is " ~ _server.name ~ ", running version " ~ _server.versionString], true));
+		send(Message(_server.name, "003", [nick, "This server was created " ~ _server.creationDate], true));
+		send(Message(_server.name, "004", [nick, _server.name, _server.versionString, "w", "snt"]));
 	}
 
 	string getHost()
