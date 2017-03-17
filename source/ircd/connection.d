@@ -23,7 +23,8 @@ class Connection
 	string nick;
 	string user;
 	string realname;
-	string hostname = "HOSTNAME";
+	string hostname;
+	char[] modes;
 
 	@property string mask() { return nick ~ "!" ~ user ~ "@" ~ hostname; }
 
@@ -52,7 +53,7 @@ class Connection
 	void send(Message message)
 	{
 		string messageString = message.toString;
-		writeln("S> " ~ messageString ~ " (" ~ nick.to!string ~ ")");
+		writeln("S> " ~ messageString);
 		_connection.write(messageString ~ "\r\n");
 	}
 
@@ -158,10 +159,21 @@ class Connection
 
 	void onUser(Message message)
 	{
-		//TODO: Parse user mode
+		if(message.parameters.length < 4)
+		{
+			sendErrNeedMoreParams(message.command);
+			return;
+		}
+
+		if(user !is null)
+		{
+			send(Message(_server.name, "462", [nick, "Unauthorized command (already registered)"], true));
+			return;
+		}
+
+		//TODO: Maybe do something with the unused parameter?
 		user = message.parameters[0];
-		writeln("mode: " ~ message.parameters[1]);
-		writeln("unused: " ~ message.parameters[2]);
+		modes = modeMaskToModes(message.parameters[1]);
 		realname = message.parameters[3];
 		hostname = getHost();
 
@@ -188,6 +200,12 @@ class Connection
 
 	void onJoin(Message message)
 	{
+		if(message.parameters.length == 0)
+		{
+			sendErrNeedMoreParams(message.command);
+			return;
+		}
+
 		auto channel = message.parameters[0];
 		if(!Server.isValidChannelName(channel))
 		{
@@ -201,6 +219,12 @@ class Connection
 
 	void onPart(Message message)
 	{
+		if(message.parameters.length == 0)
+		{
+			sendErrNeedMoreParams(message.command);
+			return;
+		}
+
 		//TODO: Support channel lists
 		//TODO: Check if user is member of channel(s)
 		auto channel = message.parameters[0];
@@ -271,19 +295,24 @@ class Connection
 		}
 	}
 
-	void sendErrNoSuchChannel(string name)
-	{
-		send(Message(_server.name, "403", [nick, name, "No such channel"], true));
-	}
-
 	void sendErrNoSuchNick(string name)
 	{
 		send(Message(_server.name, "401", [nick, name, "No such nick/channel"], true));
 	}
 
+	void sendErrNoSuchChannel(string name)
+	{
+		send(Message(_server.name, "403", [nick, name, "No such channel"], true));
+	}
+
 	void sendErrNoNickGiven()
 	{
 		send(Message(_server.name, "431", [nick, "No nickname given"], true));
+	}
+
+	void sendErrNeedMoreParams(string command)
+	{
+		send(Message(_server.name, "461", [nick, command, "Not enough parameters"], true));
 	}
 
 	string getHost()
@@ -295,6 +324,27 @@ class Connection
 			hostname = address.toAddrString;
 		}
 		return hostname;
+	}
+
+	char[] modeMaskToModes(string maskString)
+	{
+		import std.conv : to;
+		import std.exception : ifThrown;
+
+		auto mask = maskString.to!ubyte.ifThrown(0);
+
+		char[] modes;
+
+		if(mask & 0b100)
+		{
+			modes ~= 'w';
+		}
+		if(mask & 0b1000)
+		{
+			modes ~= 'i';
+		}
+
+		return modes;
 	}
 }
 
