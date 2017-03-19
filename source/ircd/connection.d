@@ -6,6 +6,7 @@ import std.algorithm;
 import std.range;
 import std.conv;
 import std.socket;
+import std.utf;
 
 import vibe.core.core;
 import vibe.stream.operations;
@@ -33,6 +34,8 @@ class Connection
 	@property bool registered() { return nick !is null && user !is null; }
 	@property bool isOperator() { return modes.canFind('o') || modes.canFind('O'); }
 	@property string servername() { return _server.name; } //TODO: Support server linking
+
+	string awayMessage;
 
 	bool connected;
 
@@ -137,6 +140,10 @@ class Connection
 				case "WHO":
 					if(!registered) sendErrNotRegistered();
 					else onWho(message);
+					break;
+				case "AWAY":
+					if(!registered) sendErrNotRegistered();
+					else onAway(message);
 					break;
 				default:
 					writeln("unknown command '", message.command, "'");
@@ -310,6 +317,12 @@ class Connection
 			else
 			{
 				_server.privmsgToUser(this, target, text);
+
+				auto targetUser = _server.connections.find!(c => c.nick == target)[0];
+				if(targetUser.modes.canFind('a'))
+				{
+					sendRplAway(target, targetUser.awayMessage);
+				}
 			}
 		}
 		else
@@ -344,6 +357,37 @@ class Connection
 		send(Message(_server.name, "315", [nick, name, "End of WHO list"], true));
 	}
 
+	void onAway(Message message)
+	{
+		if(message.parameters.length == 0)
+		{
+			//NOTE: byCodeUnit is necessary due to auto-decoding (https://wiki.dlang.org/Language_issues#Unicode_and_ranges)
+			modes = modes.byCodeUnit.remove!(a => a == 'a').array;
+			awayMessage = null;
+			send(Message(_server.name, "305", [nick, "You are no longer marked as being away"], true));
+		}
+		else
+		{
+			modes ~= 'a';
+			awayMessage = message.parameters[0];
+			send(Message(_server.name, "306", [nick, "You have been marked as being away"], true));
+		}
+	}
+
+	void sendWhoReply(string channel, Connection user, uint hopCount)
+	{
+		auto flags = user.modes.canFind('a') ? "G" : "H";
+		if(user.isOperator)	flags ~= "*";
+		//TODO: Add channel prefix
+
+		send(Message(_server.name, "352", [nick, channel, user.user, user.hostname, user.servername, user.nick, flags, hopCount.to!string ~ " " ~ user.realname], true));
+	}
+
+	void sendRplAway(string target, string message)
+	{
+		send(Message(_server.name, "301", [nick, target, message], true));
+	}
+
 	void sendErrNoSuchNick(string name)
 	{
 		send(Message(_server.name, "401", [nick, name, "No such nick/channel"], true));
@@ -367,15 +411,6 @@ class Connection
 	void sendErrNeedMoreParams(string command)
 	{
 		send(Message(_server.name, "461", [nick, command, "Not enough parameters"], true));
-	}
-
-	void sendWhoReply(string channel, Connection user, uint hopCount)
-	{
-		auto flags = user.modes.canFind('a') ? "G" : "H";
-		if(user.isOperator)	flags ~= "*";
-		//TODO: Add channel prefix
-
-		send(Message(_server.name, "352", [nick, channel, user.user, user.hostname, user.servername, user.nick, flags, hopCount.to!string ~ " " ~ user.realname], true));
 	}
 
 	void sendWelcome()
