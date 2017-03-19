@@ -14,6 +14,7 @@ import ircd.packageVersion;
 import ircd.message;
 import ircd.connection;
 import ircd.channel;
+import ircd.helpers;
 
 class Server
 {
@@ -143,13 +144,39 @@ class Server
 		}
 	}
 
-	void sendToChannel(Connection sender, string target, string text)
+	void whoChannel(Connection origin, string channelName, bool operatorsOnly)
+	{
+		//TODO: Check what RFCs say about secret/private channels
+
+		auto channel = channels.find!(c => c.name == channelName)[0];
+		foreach(c; channel.members.filter!(c => !operatorsOnly || c.isOperator)
+								  .filter!(c => c.visibleTo(origin)))
+		{
+			//TODO: Support hop count
+			origin.sendWhoReply(channelName, c, 0);
+		}
+	}
+
+	void whoGlobal(Connection origin, string mask, bool operatorsOnly)
+	{
+		foreach(c; connections.filter!(c => c.visibleTo(origin))
+							  .filter!(c => !operatorsOnly || c.isOperator)
+							  .filter!(c => [c.hostname, c.servername, c.realname, c.nick].any!(n => wildcardMatch(n, mask))))
+		{
+			//TODO: Don't leak secret/private channels (even if the RFCs don't say anything about it?)
+			auto channelName = c.channels.empty ? "*" : c.channels.array[0].name;
+			//TODO: Support hop count
+			origin.sendWhoReply(channelName, c, 0);
+		}
+	}
+
+	void privmsgToChannel(Connection sender, string target, string text)
 	{
 		auto channel = channels.find!(c => c.name == target)[0];
 		channel.sendPrivMsg(sender, text);
 	}
 
-	void sendToUser(Connection sender, string target, string text)
+	void privmsgToUser(Connection sender, string target, string text)
 	{
 		auto user = connections.find!(c => c.nick == target)[0];
 		user.send(Message(sender.mask, "PRIVMSG", [target, text], true));

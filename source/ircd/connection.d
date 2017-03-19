@@ -13,6 +13,7 @@ import vibe.stream.operations;
 import ircd.message;
 import ircd.server;
 import ircd.channel;
+import ircd.helpers;
 
 class Connection
 {
@@ -26,11 +27,12 @@ class Connection
 	string hostname;
 	char[] modes;
 
-	@property string mask() { return nick ~ "!" ~ user ~ "@" ~ hostname; }
-
 	@property auto channels() { return _server.channels.filter!(c => c.members.canFind(this)); }
 
+	@property string mask() { return nick ~ "!" ~ user ~ "@" ~ hostname; }
 	@property bool registered() { return nick !is null && user !is null; }
+	@property bool isOperator() { return modes.canFind('o') || modes.canFind('O'); }
+	@property string servername() { return _server.name; } //TODO: Support server linking
 
 	bool connected;
 
@@ -50,6 +52,11 @@ class Connection
 			return cmp(nick, other.nick);
 		}
 		return 0;
+	}
+
+	bool visibleTo(Connection other)
+	{
+		return !modes.canFind('i') || channels.any!(c => c.members.canFind(other));
 	}
 
 	void send(Message message)
@@ -126,6 +133,10 @@ class Connection
 				case "PRIVMSG":
 					if(!registered) sendErrNotRegistered();
 					else onPrivMsg(message);
+					break;
+				case "WHO":
+					if(!registered) sendErrNotRegistered();
+					else onWho(message);
 					break;
 				default:
 					writeln("unknown command '", message.command, "'");
@@ -287,7 +298,7 @@ class Connection
 			}
 			else
 			{
-				_server.sendToChannel(this, target, text);
+				_server.privmsgToChannel(this, target, text);
 			}
 		}
 		else if(Server.isValidNick(target))
@@ -298,7 +309,7 @@ class Connection
 			}
 			else
 			{
-				_server.sendToUser(this, target, text);
+				_server.privmsgToUser(this, target, text);
 			}
 		}
 		else
@@ -306,6 +317,31 @@ class Connection
 			//is this the right reply?
 			sendErrNoSuchNick(target);
 		}
+	}
+
+	void onWho(Message message)
+	{
+		if(message.parameters.length == 0)
+		{
+			_server.whoGlobal(this, "*", false);
+		}
+		else
+		{
+			auto mask = message.parameters[0];
+			auto operatorsOnly = message.parameters.length > 1 && message.parameters[1] == "o";
+
+			if(_server.isValidChannelName(mask) && _server.channels.canFind!(c => c.name == mask))
+			{
+				_server.whoChannel(this, mask, operatorsOnly);
+			}
+			else
+			{
+				_server.whoGlobal(this, mask == "0" ? "*" : mask, operatorsOnly);
+			}
+		}
+
+		auto name = message.parameters.length == 0 ? "*" : message.parameters[0];
+		send(Message(_server.name, "315", [nick, name, "End of WHO list"], true));
 	}
 
 	void sendErrNoSuchNick(string name)
@@ -331,6 +367,15 @@ class Connection
 	void sendErrNeedMoreParams(string command)
 	{
 		send(Message(_server.name, "461", [nick, command, "Not enough parameters"], true));
+	}
+
+	void sendWhoReply(string channel, Connection user, uint hopCount)
+	{
+		auto flags = user.modes.canFind('a') ? "G" : "H";
+		if(user.isOperator)	flags ~= "*";
+		//TODO: Add channel prefix
+
+		send(Message(_server.name, "352", [nick, channel, user.user, user.hostname, user.servername, user.nick, flags, hopCount.to!string ~ " " ~ user.realname], true));
 	}
 
 	void sendWelcome()
