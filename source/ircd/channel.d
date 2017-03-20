@@ -45,4 +45,12 @@ class Channel
 			member.send(Message(sender.mask, "PRIVMSG", [name, text], true));
 		}
 	}
+
+	void sendNotice(Connection sender, string text)
+	{
+		foreach(member; members.filter!(m => m.nick != sender.nick))
+		{
+			member.send(Message(sender.mask, "NOTICE", [name, text], true));
+		}
+	}
 }

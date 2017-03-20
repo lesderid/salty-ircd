@@ -137,6 +137,10 @@ class Connection
 					if(!registered) sendErrNotRegistered();
 					else onPrivMsg(message);
 					break;
+				case "NOTICE":
+					if(!registered) sendErrNotRegistered();
+					else onNotice(message);
+					break;
 				case "WHO":
 					if(!registered) sendErrNotRegistered();
 					else onWho(message);
@@ -332,6 +336,32 @@ class Connection
 		}
 	}
 
+	void onNotice(Message message)
+	{
+		//TODO: Support special message targets
+		auto target = message.parameters[0];
+		auto text = message.parameters[1];
+
+		//TODO: Figure out what we are allowed to send exactly
+
+		if(message.parameters.length < 2)
+		{
+			return;
+		}
+
+		if(Server.isValidChannelName(target))
+		{
+			if(_server.channels.canFind!(c => c.name == target))
+			{
+				_server.noticeToChannel(this, target, text);
+			}
+		}
+		else if(Server.isValidNick(target) && _server.connections.canFind!(c => c.nick == target))
+		{
+			_server.noticeToUser(this, target, text);
+		}
+	}
+
 	void onWho(Message message)
 	{
 		if(message.parameters.length == 0)
@@ -377,7 +407,7 @@ class Connection
 	void sendWhoReply(string channel, Connection user, uint hopCount)
 	{
 		auto flags = user.modes.canFind('a') ? "G" : "H";
-		if(user.isOperator)	flags ~= "*";
+		if(user.isOperator) flags ~= "*";
 		//TODO: Add channel prefix
 
 		send(Message(_server.name, "352", [nick, channel, user.user, user.hostname, user.servername, user.nick, flags, hopCount.to!string ~ " " ~ user.realname], true));

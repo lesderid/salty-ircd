@@ -182,6 +182,18 @@ class Server
 		user.send(Message(sender.mask, "PRIVMSG", [target, text], true));
 	}
 
+	void noticeToChannel(Connection sender, string target, string text)
+	{
+		auto channel = channels.find!(c => c.name == target)[0];
+		channel.sendNotice(sender, text);
+	}
+
+	void noticeToUser(Connection sender, string target, string text)
+	{
+		auto user = connections.find!(c => c.nick == target)[0];
+		user.send(Message(sender.mask, "NOTICE", [target, text], true));
+	}
+
 	void listen(ushort port = 6667)
 	{
 		listenTCP(port, &acceptConnection);
