@@ -28,12 +28,31 @@ class Channel
 		this._server = server;
 	}
 
-	void sendNames(Connection connection)
+	void sendNames(Connection connection, bool sendRplEndOfNames = true)
 	{
-		enum channelType = "="; //TODO: Support secret and private channels
+		string channelType;
 
-		connection.send(Message(_server.name, "353", [connection.nick, channelType, name, members.map!(m => m.nick).join(' ')], true));
-		connection.send(Message(_server.name, "366", [connection.nick, name, "End of NAMES list"], true));
+		if(modes.canFind('s'))
+		{
+			channelType = "@";
+		}
+		else if(modes.canFind('p'))
+		{
+			channelType = "*";
+		}
+		else
+		{
+			channelType = "=";
+		}
+
+		auto onChannel = members.canFind(connection);
+
+		connection.send(Message(_server.name, "353", [connection.nick, channelType, name, members.filter!(m => onChannel || !m.modes.canFind('i')).map!(m => m.nick).join(' ')], true));
+
+		if(sendRplEndOfNames)
+		{
+			connection.sendRplEndOfNames(name);
+		}
 	}
 
 	void sendPrivMsg(Connection sender, string text)
@@ -72,5 +91,10 @@ class Channel
 		{
 			member.send(Message(connection.mask, "TOPIC", [name, newTopic], true));
 		}
+	}
+
+	bool visibleTo(Connection connection)
+	{
+		return members.canFind(connection) || !modes.canFind('s') && !modes.canFind('p');
 	}
 }

@@ -153,6 +153,10 @@ class Connection
 					if(!registered) sendErrNotRegistered();
 					else onTopic(message);
 					break;
+				case "NAMES":
+					if(!registered) sendErrNotRegistered();
+					else onNames(message);
+					break;
 				default:
 					writeln("unknown command '", message.command, "'");
 					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
@@ -449,6 +453,34 @@ class Connection
 		}
 	}
 
+	void onNames(Message message)
+	{
+		if(message.parameters.length > 1)
+		{
+			notImplemented("forwarding NAMES to another server");
+			return;
+		}
+
+		if(message.parameters.length == 0)
+		{
+			_server.sendGlobalNames(this);
+		}
+		else
+		{
+			foreach(channelName; message.parameters[0].split(','))
+			{
+				if(_server.channels.canFind!(c => c.name == channelName && c.visibleTo(this)))
+				{
+					_server.sendChannelNames(this, channelName);
+				}
+				else
+				{
+					sendRplEndOfNames(channelName);
+				}
+			}
+		}
+	}
+
 	void sendWhoReply(string channel, Connection user, uint hopCount)
 	{
 		auto flags = user.modes.canFind('a') ? "G" : "H";
@@ -461,6 +493,11 @@ class Connection
 	void sendRplAway(string target, string message)
 	{
 		send(Message(_server.name, "301", [nick, target, message], true));
+	}
+
+	void sendRplEndOfNames(string channelName)
+	{
+		send(Message(_server.name, "366", [nick, channelName, "End of NAMES list"], true));
 	}
 
 	void sendErrNoSuchNick(string name)
@@ -496,6 +533,11 @@ class Connection
 	void sendErrChanopPrivsNeeded(string channel)
 	{
 		send(Message(_server.name, "482", [nick, channel, "You're not channel operator"], true));
+	}
+
+	void notImplemented(string description)
+	{
+		send(Message(_server.name, "ERROR", ["Not implemented yet (" ~ description ~ ")"], true));
 	}
 
 	void sendWelcome()

@@ -211,6 +211,28 @@ class Server
 		channel.setTopic(origin, newTopic);
 	}
 
+	void sendChannelNames(Connection connection, string channelName)
+	{
+		auto channel = channels.find!(c => c.name == channelName)[0];
+		channel.sendNames(connection);
+	}
+
+	void sendGlobalNames(Connection connection)
+	{
+		foreach(channel; channels.filter!(c => c.visibleTo(connection)))
+		{
+			channel.sendNames(connection, false);
+		}
+
+		auto otherUsers = connections.filter!(c => !c.modes.canFind('i') && c.channels.filter!(ch => !ch.modes.canFind('s') && !ch.modes.canFind('p')).empty);
+		if(!otherUsers.empty)
+		{
+			connection.send(Message(name, "353", [connection.nick, "=", "*", otherUsers.map!(m => m.nick).join(' ')], true));
+		}
+
+		connection.sendRplEndOfNames("*");
+	}
+
 	void listen(ushort port = 6667)
 	{
 		listenTCP(port, &acceptConnection);
