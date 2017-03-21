@@ -9,25 +9,23 @@ import ircd.message;
 
 class Channel
 {
-	private string _name;
+	string name;
 
 	Connection[] members;
 	Connection owner;
+
+	string topic = "";
+
+	char[] modes;
 
 	private Server _server;
 
 	this(string name, Connection owner, Server server)
 	{
-		this._name = name;
+		this.name = name;
 		this.owner = owner;
 		this.members = [owner];
 		this._server = server;
-	}
-
-	@property
-	string name()
-	{
-		return _name;
 	}
 
 	void sendNames(Connection connection)
@@ -51,6 +49,28 @@ class Channel
 		foreach(member; members.filter!(m => m.nick != sender.nick))
 		{
 			member.send(Message(sender.mask, "NOTICE", [name, text], true));
+		}
+	}
+
+	void sendTopic(Connection connection)
+	{
+		if(topic.empty)
+		{
+			connection.send(Message(_server.name, "331", [connection.nick, name, "No topic is set"]));
+		}
+		else
+		{
+			connection.send(Message(_server.name, "332", [connection.nick, name, topic], true));
+		}
+	}
+
+	void setTopic(Connection connection, string newTopic)
+	{
+		topic = newTopic;
+
+		foreach(member; members)
+		{
+			member.send(Message(connection.mask, "TOPIC", [name, newTopic], true));
 		}
 	}
 }

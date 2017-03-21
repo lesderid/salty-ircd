@@ -91,6 +91,11 @@ class Server
 		}
 
 		channel.sendNames(connection);
+
+		if(!channel.topic.empty)
+		{
+			channel.sendTopic(connection);
+		}
 	}
 
 	void part(Connection connection, string channelName, string partMessage)
@@ -163,7 +168,7 @@ class Server
 							  .filter!(c => !operatorsOnly || c.isOperator)
 							  .filter!(c => [c.hostname, c.servername, c.realname, c.nick].any!(n => wildcardMatch(n, mask))))
 		{
-			//TODO: Don't leak secret/private channels (even if the RFCs don't say anything about it?)
+			//TODO: Don't leak secret/private channels if RFC-strictness is off (the RFCs don't seem to say anything about it?)
 			auto channelName = c.channels.empty ? "*" : c.channels.array[0].name;
 			//TODO: Support hop count
 			origin.sendWhoReply(channelName, c, 0);
@@ -192,6 +197,18 @@ class Server
 	{
 		auto user = connections.find!(c => c.nick == target)[0];
 		user.send(Message(sender.mask, "NOTICE", [target, text], true));
+	}
+
+	void sendChannelTopic(Connection origin, string channelName)
+	{
+		auto channel = channels.find!(c => c.name == channelName)[0];
+		channel.sendTopic(origin);
+	}
+
+	void setChannelTopic(Connection origin, string channelName, string newTopic)
+	{
+		auto channel = channels.find!(c => c.name == channelName)[0];
+		channel.setTopic(origin, newTopic);
 	}
 
 	void listen(ushort port = 6667)

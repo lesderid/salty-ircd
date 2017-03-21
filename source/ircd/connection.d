@@ -149,6 +149,10 @@ class Connection
 					if(!registered) sendErrNotRegistered();
 					else onAway(message);
 					break;
+				case "TOPIC":
+					if(!registered) sendErrNotRegistered();
+					else onTopic(message);
+					break;
 				default:
 					writeln("unknown command '", message.command, "'");
 					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
@@ -404,6 +408,47 @@ class Connection
 		}
 	}
 
+	void onTopic(Message message)
+	{
+		if(message.parameters.length == 0)
+		{
+			sendErrNeedMoreParams(message.command);
+			return;
+		}
+
+		auto channelName = message.parameters[0];
+		if(message.parameters.length == 1)
+		{
+			if(!_server.channels.canFind!(c => c.name == channelName && (!(c.modes.canFind('s') || c.modes.canFind('p')) || c.members.canFind(this))))
+			{
+				//NOTE: The RFCs don't allow ERR_NOSUCHCHANNEL as a response to TOPIC
+				//TODO: If RFC-strictness is off, do send ERR_NOSUCHCHANNEL
+				send(Message(_server.name, "331", [nick, channelName, "No topic is set"], true));
+			}
+			else
+			{
+				_server.sendChannelTopic(this, channelName);
+			}
+		}
+		else
+		{
+			auto newTopic = message.parameters[1];
+			if(!channels.canFind!(c => c.name == channelName))
+			{
+				sendErrNotOnChannel(channelName);
+			}
+			//TODO: Allow operators to set flags
+			else if(channels.find!(c => c.name == channelName).map!(c => c.modes.canFind('t') /* && this user isn't an operator */).array[0])
+			{
+				sendErrChanopPrivsNeeded(channelName);
+			}
+			else
+			{
+				_server.setChannelTopic(this, channelName, newTopic);
+			}
+		}
+	}
+
 	void sendWhoReply(string channel, Connection user, uint hopCount)
 	{
 		auto flags = user.modes.canFind('a') ? "G" : "H";
@@ -433,6 +478,11 @@ class Connection
 		send(Message(_server.name, "431", [nick, "No nickname given"], true));
 	}
 
+	void sendErrNotOnChannel(string channel)
+	{
+		send(Message(_server.name, "442", [nick, channel, "You're not on that channel"], true));
+	}
+
 	void sendErrNotRegistered()
 	{
 		send(Message(_server.name, "451", ["(You)", "You have not registered"], true));
@@ -441,6 +491,11 @@ class Connection
 	void sendErrNeedMoreParams(string command)
 	{
 		send(Message(_server.name, "461", [nick, command, "Not enough parameters"], true));
+	}
+
+	void sendErrChanopPrivsNeeded(string channel)
+	{
+		send(Message(_server.name, "482", [nick, channel, "You're not channel operator"], true));
 	}
 
 	void sendWelcome()
