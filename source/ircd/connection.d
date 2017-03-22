@@ -169,6 +169,10 @@ class Connection
 					if(!registered) sendErrNotRegistered();
 					else onVersion(message);
 					break;
+				case "TIME":
+					if(!registered) sendErrNotRegistered();
+					else onTime(message);
+					break;
 				default:
 					writeln("unknown command '", message.command, "'");
 					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
@@ -581,6 +585,16 @@ class Connection
 			return;
 		}
 		_server.sendVersion(this);
+	}
+
+	void onTime(Message message)
+	{
+		if(message.parameters.length > 0)
+		{
+			notImplemented("querying the time of another server");
+			return;
+		}
+		_server.sendTime(this);
 	}
 
 	void sendWhoReply(string channel, Connection user, uint hopCount)

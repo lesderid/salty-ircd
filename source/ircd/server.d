@@ -6,6 +6,7 @@ import std.range;
 import std.conv;
 import std.socket;
 import core.time;
+import std.datetime;
 
 import vibe.core.core;
 
@@ -254,6 +255,12 @@ class Server
 	void sendVersion(Connection connection)
 	{
 		connection.send(Message(name, "351", [connection.nick, versionString ~ ".", name, ""], true));
+	}
+
+	void sendTime(Connection connection)
+	{
+		auto timeString = Clock.currTime.toISOExtString;
+		connection.send(Message(name, "391", [connection.nick, name, timeString], true));
 	}
 
 	void invite(Connection inviter, string target, string channelName)
