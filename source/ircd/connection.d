@@ -161,6 +161,10 @@ class Connection
 					if(!registered) sendErrNotRegistered();
 					else onList(message);
 					break;
+				case "INVITE":
+					if(!registered) sendErrNotRegistered();
+					else onInvite(message);
+					break;
 				default:
 					writeln("unknown command '", message.command, "'");
 					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
@@ -504,6 +508,65 @@ class Connection
 		}
 	}
 
+	void onInvite(Message message)
+	{
+		if(message.parameters.length < 2)
+		{
+			sendErrNeedMoreParams(message.command);
+			return;
+		}
+
+		auto targetNick = message.parameters[0];
+		auto targetUserRange = _server.connections.find!(c => c.nick == targetNick);
+		if(targetUserRange.empty)
+		{
+			sendErrNoSuchNick(targetNick);
+			return;
+		}
+		auto targetUser = targetUserRange[0];
+
+		auto channelName = message.parameters[1];
+		auto channelRange = _server.channels.find!(c => c.name == channelName);
+		if(channelRange.empty)
+		{
+			_server.invite(this, targetUser.nick, channelName);
+
+			sendRplInviting(channelName, targetUser.nick);
+
+			if(targetUser.modes.canFind('a'))
+			{
+				sendRplAway(targetUser.nick, targetUser.awayMessage);
+			}
+		}
+		else
+		{
+			auto channel = channelRange[0];
+			if(!channel.members.canFind(this))
+			{
+				sendErrNotOnChannel(channel.name);
+			}
+			else if(channel.members.canFind(targetUser))
+			{
+				send(Message(_server.name, "443", [nick, targetUser.nick, channel.name, "is already on channel"], true));
+			}
+			else if(channel.modes.canFind('i') /* TODO: and this connection isn't a chanop */)
+			{
+				sendErrChanopPrivsNeeded(channel.name);
+			}
+			else
+			{
+				_server.invite(this, targetUser.nick, channel.name);
+
+				sendRplInviting(channel.name, targetUser.nick);
+
+				if(targetUser.modes.canFind('a'))
+				{
+					sendRplAway(targetUser.nick, targetUser.awayMessage);
+				}
+			}
+		}
+	}
+
 	void sendWhoReply(string channel, Connection user, uint hopCount)
 	{
 		auto flags = user.modes.canFind('a') ? "G" : "H";
@@ -526,6 +589,12 @@ class Connection
 	void sendRplListEnd()
 	{
 		send(Message(_server.name, "323", [nick, "End of LIST"], true));
+	}
+
+	void sendRplInviting(string channelName, string name)
+	{
+		//TODO: If RFC-strictness is off, send parameters in reverse order
+		send(Message(_server.name, "341", [nick, channelName, name]));
 	}
 
 	void sendRplEndOfNames(string channelName)

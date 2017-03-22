@@ -251,6 +251,12 @@ class Server
 		connection.sendRplListEnd();
 	}
 
+	void invite(Connection inviter, string target, string channelName)
+	{
+		auto user = connections.find!(c => c.nick = target)[0];
+		user.send(Message(inviter.mask, "INVITE", [user.nick, channelName]));
+	}
+
 	void listen(ushort port = 6667)
 	{
 		listenTCP(port, &acceptConnection);
