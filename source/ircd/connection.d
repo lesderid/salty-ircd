@@ -165,6 +165,10 @@ class Connection
 					if(!registered) sendErrNotRegistered();
 					else onInvite(message);
 					break;
+				case "VERSION":
+					if(!registered) sendErrNotRegistered();
+					else onVersion(message);
+					break;
 				default:
 					writeln("unknown command '", message.command, "'");
 					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
@@ -567,6 +571,16 @@ class Connection
 				}
 			}
 		}
+	}
+
+	void onVersion(Message message)
+	{
+		if(message.parameters.length > 0)
+		{
+			notImplemented("querying the version of another server");
+			return;
+		}
+		_server.sendVersion(this);
 	}
 
 	void sendWhoReply(string channel, Connection user, uint hopCount)

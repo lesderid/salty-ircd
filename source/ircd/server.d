@@ -251,6 +251,11 @@ class Server
 		connection.sendRplListEnd();
 	}
 
+	void sendVersion(Connection connection)
+	{
+		connection.send(Message(name, "351", [connection.nick, versionString ~ ".", name, ""], true));
+	}
+
 	void invite(Connection inviter, string target, string channelName)
 	{
 		auto user = connections.find!(c => c.nick = target)[0];
