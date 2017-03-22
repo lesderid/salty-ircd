@@ -202,7 +202,7 @@ class Connection
 		//TODO: Check validity etc.
 		nick = newNick;
 
-		if(!wasRegistered)
+		if(!wasRegistered && registered)
 		{
 			sendWelcome();
 		}
@@ -222,13 +222,15 @@ class Connection
 			return;
 		}
 
+		auto wasRegistered = registered;
+
 		//TODO: Maybe do something with the unused parameter?
 		user = message.parameters[0];
 		modes = modeMaskToModes(message.parameters[1]);
 		realname = message.parameters[3];
 		hostname = getHost();
 
-		if(registered)
+		if(!wasRegistered && registered)
 		{
 			sendWelcome();
 		}
