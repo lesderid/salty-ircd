@@ -233,6 +233,24 @@ class Server
 		connection.sendRplEndOfNames("*");
 	}
 
+	void sendFullList(Connection connection)
+	{
+		foreach(channel; channels.filter!(c => c.visibleTo(connection)))
+		{
+			connection.sendRplList(channel.name, channel.members.filter!(m => m.visibleTo(connection)).array.length, channel.topic);
+		}
+		connection.sendRplListEnd();
+	}
+
+	void sendPartialList(Connection connection, string[] channelNames)
+	{
+		foreach(channel; channels.filter!(c => channelNames.canFind(c.name) && c.visibleTo(connection)))
+		{
+			connection.sendRplList(channel.name, channel.members.filter!(m => m.visibleTo(connection)).array.length, channel.topic);
+		}
+		connection.sendRplListEnd();
+	}
+
 	void listen(ushort port = 6667)
 	{
 		listenTCP(port, &acceptConnection);

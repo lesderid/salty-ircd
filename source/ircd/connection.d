@@ -157,6 +157,10 @@ class Connection
 					if(!registered) sendErrNotRegistered();
 					else onNames(message);
 					break;
+				case "LIST":
+					if(!registered) sendErrNotRegistered();
+					else onList(message);
+					break;
 				default:
 					writeln("unknown command '", message.command, "'");
 					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
@@ -481,6 +485,25 @@ class Connection
 		}
 	}
 
+	void onList(Message message)
+	{
+		if(message.parameters.length > 1)
+		{
+			notImplemented("forwarding LIST to another server");
+			return;
+		}
+
+		if(message.parameters.length == 0)
+		{
+			_server.sendFullList(this);
+		}
+		else
+		{
+			auto channelNames = message.parameters[0].split(',');
+			_server.sendPartialList(this, channelNames);
+		}
+	}
+
 	void sendWhoReply(string channel, Connection user, uint hopCount)
 	{
 		auto flags = user.modes.canFind('a') ? "G" : "H";
@@ -493,6 +516,16 @@ class Connection
 	void sendRplAway(string target, string message)
 	{
 		send(Message(_server.name, "301", [nick, target, message], true));
+	}
+
+	void sendRplList(string channelName, ulong visibleCount, string topic)
+	{
+		send(Message(_server.name, "322", [nick, channelName, visibleCount.to!string, topic], true));
+	}
+
+	void sendRplListEnd()
+	{
+		send(Message(_server.name, "323", [nick, "End of LIST"], true));
 	}
 
 	void sendRplEndOfNames(string channelName)
