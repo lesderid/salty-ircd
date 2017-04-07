@@ -7,6 +7,7 @@ import std.conv;
 import std.socket;
 import core.time;
 import std.datetime;
+import std.string;
 
 import vibe.core.core;
 
@@ -26,13 +27,26 @@ class Server
 
 	string name;
 
+	string motd;
+
 	Channel[] channels;
 
 	this()
 	{
 		name = Socket.hostName;
 
+		readMotd();
+
 		runTask(&pingLoop);
+	}
+
+	private void readMotd()
+	{
+		import std.file : exists, readText;
+		if(exists("motd"))
+		{
+			motd = readText("motd");
+		}
 	}
 
 	private void pingLoop()
@@ -267,6 +281,24 @@ class Server
 	{
 		auto user = connections.find!(c => c.nick = target)[0];
 		user.send(Message(inviter.mask, "INVITE", [user.nick, channelName]));
+	}
+
+	void sendMotd(Connection connection)
+	{
+		if(motd !is null)
+		{
+			connection.send(Message(name, "375", [connection.nick, ":- " ~ name ~ " Message of the day - "], true));
+			foreach(line; motd.splitLines)
+			{
+				//TODO: Implement line wrapping
+				connection.send(Message(name, "372", [connection.nick, ":- " ~ line], true));
+			}
+			connection.send(Message(name, "376", [connection.nick, "End of MOTD command"], true));
+		}
+		else
+		{
+			connection.send(Message(name, "422", [connection.nick, "MOTD File is missing"], true));
+		}
 	}
 
 	void listen(ushort port = 6667)

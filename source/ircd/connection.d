@@ -173,6 +173,10 @@ class Connection
 					if(!registered) sendErrNotRegistered();
 					else onTime(message);
 					break;
+				case "MOTD":
+					if(!registered) sendErrNotRegistered();
+					else onMotd(message);
+					break;
 				default:
 					writeln("unknown command '", message.command, "'");
 					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
@@ -595,6 +599,16 @@ class Connection
 			return;
 		}
 		_server.sendTime(this);
+	}
+
+	void onMotd(Message message)
+	{
+		if(message.parameters.length > 0)
+		{
+			notImplemented("querying the motd of another server");
+			return;
+		}
+		_server.sendMotd(this);
 	}
 
 	void sendWhoReply(string channel, Connection user, uint hopCount)
