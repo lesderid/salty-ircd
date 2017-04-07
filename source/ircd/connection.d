@@ -203,6 +203,12 @@ class Connection
 			return;
 		}
 
+                if(!_server.isValidNick(newNick))
+                {
+                        send(Message(_server.name, "432", [nick, newNick, "Erroneous nickname"]));
+                        return;
+                }
+
 		if(nick !is null)
 		{
 			sendToPeers(Message(nick, "NICK", [newNick]));
