@@ -76,8 +76,20 @@ class Server
 
 	static bool isValidNick(string name)
 	{
-		//TODO: Use the real rules
-		return !name.startsWith('#') && !name.startsWith('&') && name.length <= 9;
+                import std.ascii : digits, letters;
+
+                if(name.length > 9)
+                        return false;
+                foreach(i, c; name)
+                {
+                        auto allowed = letters ~ "[]\\`_^{|}";
+                        if(i > 0)
+                                allowed = allowed ~ digits ~ "-";
+                
+                        if (!allowed.canFind(c))
+                                return false;
+                }
+                return true;
 	}
 
 	bool isNickAvailable(string nick)
