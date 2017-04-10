@@ -312,6 +312,31 @@ class Server
 		connection.send(Message(name, "376", [connection.nick, "End of MOTD command"], true));
 	}
 
+	void sendLusers(Connection connection)
+	{
+		//TODO: If RFC-strictness is off, use '1 server' instead of '1 servers' of the network (or the part of the network of the query) has only one server
+
+		//TODO: Support services and multiple servers
+		connection.send(Message(name, "251", [connection.nick, "There are " ~ connections.filter!(c => c.registered).count.to!string ~ " users and 0 services on 1 servers"], true));
+
+		if(connections.any!(c => c.isOperator))
+		{
+			connection.send(Message(name, "252", [connection.nick, connections.count!(c => c.isOperator).to!string, "operator(s) online"], true));
+		}
+
+		if(connections.any!(c => !c.registered))
+		{
+			connection.send(Message(name, "253", [connection.nick, connections.count!(c => !c.registered).to!string, "unknown connection(s)"], true));
+		}
+
+		if(channels.length > 0)
+		{
+			connection.send(Message(name, "254", [connection.nick, channels.length.to!string, "channels formed"], true));
+		}
+
+		connection.send(Message(name, "255", [connection.nick, "I have " ~ connections.length.to!string ~ " clients and 1 servers"], true));
+	}
+
 	void listen(ushort port = 6667)
 	{
 		listenTCP(port, &acceptConnection);

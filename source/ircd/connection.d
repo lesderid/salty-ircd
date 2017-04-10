@@ -177,6 +177,10 @@ class Connection
 					if(!registered) sendErrNotRegistered();
 					else onMotd(message);
 					break;
+				case "LUSERS":
+					if(!registered) sendErrNotRegistered();
+					else onLusers(message);
+					break;
 				default:
 					writeln("unknown command '", message.command, "'");
 					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
@@ -620,6 +624,21 @@ class Connection
 			return;
 		}
 		_server.sendMotd(this);
+	}
+
+	void onLusers(Message message)
+	{
+		if(message.parameters.length == 1)
+		{
+			notImplemented("querying the size of a part of the network");
+			return;
+		}
+		else if(message.parameters.length > 1)
+		{
+			notImplemented("forwarding LUSERS to another server");
+			return;
+		}
+		_server.sendLusers(this);
 	}
 
 	void sendWhoReply(string channel, Connection user, uint hopCount)
