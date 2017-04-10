@@ -76,20 +76,26 @@ class Server
 
 	static bool isValidNick(string name)
 	{
-                import std.ascii : digits, letters;
+		import std.ascii : digits, letters;
 
-                if(name.length > 9)
-                        return false;
-                foreach(i, c; name)
-                {
-                        auto allowed = letters ~ "[]\\`_^{|}";
-                        if(i > 0)
-                                allowed = allowed ~ digits ~ "-";
-                
-                        if (!allowed.canFind(c))
-                                return false;
-                }
-                return true;
+		if(name.length > 9)
+		{
+			return false;
+		}
+		foreach(i, c; name)
+		{
+			auto allowed = letters ~ "[]\\`_^{|}";
+			if(i > 0)
+			{
+				allowed ~= digits ~ "-";
+			}
+
+			if (!allowed.canFind(c))
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
 	bool isNickAvailable(string nick)
@@ -297,20 +303,13 @@ class Server
 
 	void sendMotd(Connection connection)
 	{
-		if(motd !is null)
+		connection.send(Message(name, "375", [connection.nick, ":- " ~ name ~ " Message of the day - "], true));
+		foreach(line; motd.splitLines)
 		{
-			connection.send(Message(name, "375", [connection.nick, ":- " ~ name ~ " Message of the day - "], true));
-			foreach(line; motd.splitLines)
-			{
-				//TODO: Implement line wrapping
-				connection.send(Message(name, "372", [connection.nick, ":- " ~ line], true));
-			}
-			connection.send(Message(name, "376", [connection.nick, "End of MOTD command"], true));
+			//TODO: Implement line wrapping
+			connection.send(Message(name, "372", [connection.nick, ":- " ~ line], true));
 		}
-		else
-		{
-			connection.send(Message(name, "422", [connection.nick, "MOTD File is missing"], true));
-		}
+		connection.send(Message(name, "376", [connection.nick, "End of MOTD command"], true));
 	}
 
 	void listen(ushort port = 6667)

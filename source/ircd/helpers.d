@@ -8,7 +8,6 @@ import std.range;
 @safe pure
 bool wildcardMatch(string input, string pattern)
 {
-
 	foreach (ref pi; 0 .. pattern.length)
 	{
 		const pc = pattern[pi];
@@ -16,24 +15,30 @@ bool wildcardMatch(string input, string pattern)
 		{
 			case '*':
 				if (pi + 1 == pattern.length)
+				{
 					return true;
+				}
 				for (; !input.empty; input.popFront())
 				{
 					auto p = input.save;
 					if (wildcardMatch(p, pattern[pi + 1 .. pattern.length]))
+					{
 						return true;
+					}
 				}
 				return false;
 			case '?':
 				if (input.empty)
+				{
 					return false;
+				}
 				input.popFront();
 				break;
 			default:
-				if (input.empty)
+				if (input.empty || pc != input.front)
+				{
 					return false;
-				if (pc != input.front)
-					return false;
+				}
 				input.popFront();
 				break;
 		}

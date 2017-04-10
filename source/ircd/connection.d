@@ -50,7 +50,7 @@ class Connection
 	override int opCmp(Object o)
 	{
 		Connection other;
-		if((other = cast(Connection)other) !is null)
+		if((other = cast(Connection)o) !is null)
 		{
 			return cmp(nick, other.nick);
 		}
@@ -612,6 +612,11 @@ class Connection
 		if(message.parameters.length > 0)
 		{
 			notImplemented("querying the motd of another server");
+			return;
+		}
+		else if(_server.motd is null)
+		{
+			send(Message(_server.name, "422", [nick, "MOTD File is missing"], true));
 			return;
 		}
 		_server.sendMotd(this);
