@@ -314,7 +314,7 @@ class Server
 
 	void sendLusers(Connection connection)
 	{
-		//TODO: If RFC-strictness is off, use '1 server' instead of '1 servers' of the network (or the part of the network of the query) has only one server
+		//TODO: If RFC-strictness is off, use '1 server' instead of '1 servers' if the network (or the part of the network of the query) has only one server
 
 		//TODO: Support services and multiple servers
 		connection.send(Message(name, "251", [connection.nick, "There are " ~ connections.filter!(c => c.registered).count.to!string ~ " users and 0 services on 1 servers"], true));
@@ -335,6 +335,13 @@ class Server
 		}
 
 		connection.send(Message(name, "255", [connection.nick, "I have " ~ connections.length.to!string ~ " clients and 1 servers"], true));
+	}
+
+	void ison(Connection connection, string[] nicks)
+	{
+		auto reply = nicks.filter!(n => connections.canFind!(u => u.nick == n)).join(' ');
+
+		connection.send(Message(name, "303", [connection.nick, reply], true));
 	}
 
 	void listen(ushort port = 6667)

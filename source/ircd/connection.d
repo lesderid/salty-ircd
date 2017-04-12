@@ -181,6 +181,10 @@ class Connection
 					if(!registered) sendErrNotRegistered();
 					else onLusers(message);
 					break;
+				case "ISON":
+					if(!registered) sendErrNotRegistered();
+					else onIson(message);
+					break;
 				default:
 					writeln("unknown command '", message.command, "'");
 					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
@@ -207,11 +211,11 @@ class Connection
 			return;
 		}
 
-                if(!_server.isValidNick(newNick))
-                {
-                        send(Message(_server.name, "432", [nick, newNick, "Erroneous nickname"]));
-                        return;
-                }
+		if(!_server.isValidNick(newNick))
+		{
+			send(Message(_server.name, "432", [nick, newNick, "Erroneous nickname"]));
+			return;
+		}
 
 		if(nick !is null)
 		{
@@ -639,6 +643,22 @@ class Connection
 			return;
 		}
 		_server.sendLusers(this);
+	}
+
+	void onIson(Message message)
+	{
+		if(message.parameters.length < 1)
+		{
+			sendErrNeedMoreParams(message.command);
+			return;
+		}
+
+		//NOTE: The RFCs are ambiguous about the parameter(s).
+		//		It specifies one allowed parameter type, a space-separated list of nicknames (i.e. prefixed with ':').
+		//		However, the nicknames in the example are sent as separate parameters, not as a single string prefixed with ':'.
+		//		For this implementation, we assume the example is wrong, like most clients seem to assume as well.
+		//		(Other server implementations usually seem to support both interpretations.)
+		_server.ison(this, message.parameters[0].split);
 	}
 
 	void sendWhoReply(string channel, Connection user, uint hopCount)
