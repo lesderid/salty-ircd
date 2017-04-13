@@ -205,7 +205,7 @@ class Connection
 
 		auto newNick = message.parameters[0];
 
-		if(!_server.isNickAvailable(newNick))
+		if(!_server.isNickAvailable(newNick) && newNick.toIRCLower != nick.toIRCLower)
 		{
 			send(Message(_server.name, "433", [nick, newNick, "Nickname already in use"]));
 			return;
@@ -311,7 +311,7 @@ class Connection
 		{
 			sendErrNoSuchChannel(channel);
 		}
-		else if(!channels.canFind!(c => c.name == channel))
+		else if(!_server.canFindChannelByName(channel))
 		{
 			send(Message(_server.name, "442", [nick, channel, "You're not on that channel"], true));
 		}
@@ -347,7 +347,7 @@ class Connection
 
 		if(Server.isValidChannelName(target))
 		{
-			if(!_server.channels.canFind!(c => c.name == target))
+			if(!_server.canFindChannelByName(target))
 			{
 				sendErrNoSuchNick(target);
 			}
@@ -358,7 +358,7 @@ class Connection
 		}
 		else if(Server.isValidNick(target))
 		{
-			if(!_server.connections.canFind!(c => c.nick == target))
+			if(!_server.canFindConnectionByNick(target))
 			{
 				sendErrNoSuchNick(target);
 			}
@@ -366,7 +366,7 @@ class Connection
 			{
 				_server.privmsgToUser(this, target, text);
 
-				auto targetUser = _server.connections.find!(c => c.nick == target)[0];
+				auto targetUser = _server.findConnectionByNick(target)[0];
 				if(targetUser.modes.canFind('a'))
 				{
 					sendRplAway(target, targetUser.awayMessage);
@@ -393,14 +393,11 @@ class Connection
 			return;
 		}
 
-		if(Server.isValidChannelName(target))
+		if(Server.isValidChannelName(target) && _server.canFindChannelByName(target))
 		{
-			if(_server.channels.canFind!(c => c.name == target))
-			{
-				_server.noticeToChannel(this, target, text);
-			}
+			_server.noticeToChannel(this, target, text);
 		}
-		else if(Server.isValidNick(target) && _server.connections.canFind!(c => c.nick == target))
+		else if(Server.isValidNick(target) && _server.canFindConnectionByNick(target))
 		{
 			_server.noticeToUser(this, target, text);
 		}
@@ -417,7 +414,7 @@ class Connection
 			auto mask = message.parameters[0];
 			auto operatorsOnly = message.parameters.length > 1 && message.parameters[1] == "o";
 
-			if(_server.isValidChannelName(mask) && _server.channels.canFind!(c => c.name == mask))
+			if(_server.isValidChannelName(mask) && _server.canFindChannelByName(mask))
 			{
 				_server.whoChannel(this, mask, operatorsOnly);
 			}
@@ -459,7 +456,7 @@ class Connection
 		auto channelName = message.parameters[0];
 		if(message.parameters.length == 1)
 		{
-			if(!_server.channels.canFind!(c => c.name == channelName && (!(c.modes.canFind('s') || c.modes.canFind('p')) || c.members.canFind(this))))
+			if(!_server.channels.canFind!(c => c.name.toIRCLower == channelName.toIRCLower && (!(c.modes.canFind('s') || c.modes.canFind('p')) || c.members.canFind(this))))
 			{
 				//NOTE: The RFCs don't allow ERR_NOSUCHCHANNEL as a response to TOPIC
 				//TODO: If RFC-strictness is off, do send ERR_NOSUCHCHANNEL
@@ -473,12 +470,12 @@ class Connection
 		else
 		{
 			auto newTopic = message.parameters[1];
-			if(!channels.canFind!(c => c.name == channelName))
+			if(!channels.canFind!(c => c.name.toIRCLower == channelName.toIRCLower))
 			{
 				sendErrNotOnChannel(channelName);
 			}
 			//TODO: Allow operators to set flags
-			else if(channels.find!(c => c.name == channelName).map!(c => c.modes.canFind('t') /* && this user isn't an operator */).array[0])
+			else if(channels.find!(c => c.name.toIRCLower == channelName.toIRCLower).map!(c => c.modes.canFind('t') /* && this user isn't an operator */).array[0])
 			{
 				sendErrChanopPrivsNeeded(channelName);
 			}
@@ -505,7 +502,7 @@ class Connection
 		{
 			foreach(channelName; message.parameters[0].split(','))
 			{
-				if(_server.channels.canFind!(c => c.name == channelName && c.visibleTo(this)))
+				if(_server.channels.canFind!(c => c.name.toIRCLower == channelName.toIRCLower && c.visibleTo(this)))
 				{
 					_server.sendChannelNames(this, channelName);
 				}
@@ -545,7 +542,7 @@ class Connection
 		}
 
 		auto targetNick = message.parameters[0];
-		auto targetUserRange = _server.connections.find!(c => c.nick == targetNick);
+		auto targetUserRange = _server.findConnectionByNick(targetNick);
 		if(targetUserRange.empty)
 		{
 			sendErrNoSuchNick(targetNick);
@@ -554,7 +551,7 @@ class Connection
 		auto targetUser = targetUserRange[0];
 
 		auto channelName = message.parameters[1];
-		auto channelRange = _server.channels.find!(c => c.name == channelName);
+		auto channelRange = _server.findChannelByName(channelName);
 		if(channelRange.empty)
 		{
 			_server.invite(this, targetUser.nick, channelName);

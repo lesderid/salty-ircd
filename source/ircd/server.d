@@ -98,14 +98,34 @@ class Server
 		return true;
 	}
 
+	Connection[] findConnectionByNick(string nick)
+	{
+		return connections.find!(c => c.nick.toIRCLower == nick.toIRCLower);
+	}
+
+	bool canFindConnectionByNick(string nick)
+	{
+		return !findConnectionByNick(nick).empty;
+	}
+
 	bool isNickAvailable(string nick)
 	{
-		return !connections.canFind!(c => c.nick == nick);
+		return !canFindConnectionByNick(nick);
+	}
+
+	Channel[] findChannelByName(string name)
+	{
+		return channels.find!(c => c.name.toIRCLower == name.toIRCLower);
+	}
+
+	bool canFindChannelByName(string name)
+	{
+		return !findConnectionByNick(name).empty;
 	}
 
 	void join(Connection connection, string channelName)
 	{
-		auto channelRange = channels.find!(c => c.name == channelName);
+		auto channelRange = findChannelByName(channelName);
 		Channel channel;
 		if(channelRange.empty)
 		{
@@ -133,7 +153,7 @@ class Server
 
 	void part(Connection connection, string channelName, string partMessage)
 	{
-		auto channel = connection.channels.array.find!(c => c.name == channelName)[0];
+		auto channel = connection.channels.array.find!(c => c.name.toIRCLower == channelName.toIRCLower)[0];
 
 		foreach(member; channel.members)
 		{
@@ -186,7 +206,7 @@ class Server
 	{
 		//TODO: Check what RFCs say about secret/private channels
 
-		auto channel = channels.find!(c => c.name == channelName)[0];
+		auto channel = findChannelByName(channelName)[0];
 		foreach(c; channel.members.filter!(c => !operatorsOnly || c.isOperator)
 								  .filter!(c => c.visibleTo(origin)))
 		{
@@ -210,43 +230,43 @@ class Server
 
 	void privmsgToChannel(Connection sender, string target, string text)
 	{
-		auto channel = channels.find!(c => c.name == target)[0];
+		auto channel = findChannelByName(target)[0];
 		channel.sendPrivMsg(sender, text);
 	}
 
 	void privmsgToUser(Connection sender, string target, string text)
 	{
-		auto user = connections.find!(c => c.nick == target)[0];
+		auto user = findConnectionByNick(target)[0];
 		user.send(Message(sender.mask, "PRIVMSG", [target, text], true));
 	}
 
 	void noticeToChannel(Connection sender, string target, string text)
 	{
-		auto channel = channels.find!(c => c.name == target)[0];
+		auto channel = findChannelByName(target)[0];
 		channel.sendNotice(sender, text);
 	}
 
 	void noticeToUser(Connection sender, string target, string text)
 	{
-		auto user = connections.find!(c => c.nick == target)[0];
+		auto user = findConnectionByNick(target)[0];
 		user.send(Message(sender.mask, "NOTICE", [target, text], true));
 	}
 
 	void sendChannelTopic(Connection origin, string channelName)
 	{
-		auto channel = channels.find!(c => c.name == channelName)[0];
+		auto channel = findChannelByName(channelName)[0];
 		channel.sendTopic(origin);
 	}
 
 	void setChannelTopic(Connection origin, string channelName, string newTopic)
 	{
-		auto channel = channels.find!(c => c.name == channelName)[0];
+		auto channel = findChannelByName(channelName)[0];
 		channel.setTopic(origin, newTopic);
 	}
 
 	void sendChannelNames(Connection connection, string channelName)
 	{
-		auto channel = channels.find!(c => c.name == channelName)[0];
+		auto channel = findChannelByName(channelName)[0];
 		channel.sendNames(connection);
 	}
 
@@ -339,7 +359,7 @@ class Server
 
 	void ison(Connection connection, string[] nicks)
 	{
-		auto reply = nicks.filter!(n => connections.canFind!(u => u.nick == n)).join(' ');
+		auto reply = nicks.filter!(n => canFindConnectionByNick(n)).join(' ');
 
 		connection.send(Message(name, "303", [connection.nick, reply], true));
 	}

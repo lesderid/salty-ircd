@@ -1,6 +1,7 @@
 module ircd.helpers;
 
-import std.range;
+import std.range : array, empty, front, popFront, save;
+import std.algorithm : map;
 
 //Based on std.path.globMatch (https://github.com/dlang/phobos/blob/v2.073.2/std/path.d#L3164)
 //License: Boost License 1.0 (http://www.boost.org/LICENSE_1_0.txt)
@@ -46,3 +47,26 @@ bool wildcardMatch(string input, string pattern)
 	return input.empty;
 }
 
+@safe pure
+dchar toIRCLower(dchar input)
+{
+	import std.uni : toLower;
+	switch(input)
+	{
+		case '[':
+			return '{';
+		case ']':
+			return '}';
+		case '\\':
+			return '|';
+		default:
+			return input.toLower;
+	}
+}
+
+@safe pure
+string toIRCLower(string input)
+{
+	import std.utf : byChar;
+	return input.map!toIRCLower.byChar.array.idup;
+}
