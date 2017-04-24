@@ -107,6 +107,8 @@ class Connection
 				continue;
 			}
 
+			//TODO: If RFC-strictness is off, ignore command case
+
 			//NOTE: The RFCs don't specify what 'being idle' means
 			//		We assume that it's sending any message that isn't a PING/PONG.
 			if(message.command != "PING" && message.command != "PONG")
@@ -116,7 +118,12 @@ class Connection
 
 			writeln("C> " ~ message.toString);
 
-			//TODO: If RFC-strictness is off, ignore case
+			if(!registered && !["NICK", "USER", "PING", "PONG", "QUIT"].canFind(message.command))
+			{
+				sendErrNotRegistered();
+				continue;
+			}
+
 			switch(message.command)
 			{
 				case "NICK":
@@ -136,68 +143,52 @@ class Connection
 					onQuit(message);
 					break;
 				case "JOIN":
-					if(!registered) sendErrNotRegistered();
-					else onJoin(message);
+					onJoin(message);
 					break;
 				case "PART":
-					if(!registered) sendErrNotRegistered();
-					else onPart(message);
+					onPart(message);
 					break;
 				case "PRIVMSG":
-					if(!registered) sendErrNotRegistered();
-					else onPrivMsg(message);
+					onPrivMsg(message);
 					break;
 				case "NOTICE":
-					if(!registered) sendErrNotRegistered();
-					else onNotice(message);
+					onNotice(message);
 					break;
 				case "WHO":
-					if(!registered) sendErrNotRegistered();
-					else onWho(message);
+					onWho(message);
 					break;
 				case "AWAY":
-					if(!registered) sendErrNotRegistered();
-					else onAway(message);
+					onAway(message);
 					break;
 				case "TOPIC":
-					if(!registered) sendErrNotRegistered();
-					else onTopic(message);
+					onTopic(message);
 					break;
 				case "NAMES":
-					if(!registered) sendErrNotRegistered();
-					else onNames(message);
+					onNames(message);
 					break;
 				case "LIST":
-					if(!registered) sendErrNotRegistered();
-					else onList(message);
+					onList(message);
 					break;
 				case "INVITE":
-					if(!registered) sendErrNotRegistered();
-					else onInvite(message);
+					onInvite(message);
 					break;
 				case "VERSION":
-					if(!registered) sendErrNotRegistered();
-					else onVersion(message);
+					onVersion(message);
 					break;
 				case "TIME":
-					if(!registered) sendErrNotRegistered();
-					else onTime(message);
+					onTime(message);
 					break;
 				case "MOTD":
-					if(!registered) sendErrNotRegistered();
-					else onMotd(message);
+					onMotd(message);
 					break;
 				case "LUSERS":
-					if(!registered) sendErrNotRegistered();
-					else onLusers(message);
+					onLusers(message);
 					break;
 				case "ISON":
-					if(!registered) sendErrNotRegistered();
-					else onIson(message);
+					onIson(message);
 					break;
 				case "WHOIS":
-					if(!registered) sendErrNotRegistered();
-					else onWhois(message);
+					onWhois(message);
 					break;
 				default:
 					writeln("unknown command '", message.command, "'");
