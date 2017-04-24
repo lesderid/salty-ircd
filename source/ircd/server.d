@@ -26,6 +26,7 @@ class Server
 	enum versionString = "salty-ircd-" ~ packageVersion;
 
 	string name;
+	enum string info = "A salty-ircd server"; //TODO: Make server info configurable
 
 	string motd;
 
@@ -362,6 +363,24 @@ class Server
 		auto reply = nicks.filter!(n => canFindConnectionByNick(n)).join(' ');
 
 		connection.send(Message(name, "303", [connection.nick, reply], true));
+	}
+
+	void whois(Connection connection, string mask)
+	{
+		auto user = findConnectionByNick(mask)[0];
+
+		connection.send(Message(name, "311", [connection.nick, user.nick, user.user, user.hostname, "*", user.hostname], true));
+		//TODO: Send information about the user's actual server (which is not necessarily this one)
+		connection.send(Message(name, "312", [connection.nick, user.nick, name, info], true));
+		if(user.isOperator)
+		{
+			connection.send(Message(name, "313", [connection.nick, user.nick, "is an IRC operator"], true));
+		}
+		auto idleSeconds = (Clock.currTime - user.lastMessageTime).total!"seconds";
+		connection.send(Message(name, "317", [connection.nick, user.nick, idleSeconds.to!string, "seconds idle"], true));
+		//TODO: Prepend nick prefix (i.e. '@' or '+') when applicable
+		auto userChannels = user.channels.map!(c => c.name).join(' ');
+		connection.send(Message(name, "319", [connection.nick, user.nick, userChannels], true));
 	}
 
 	void listen(ushort port = 6667)

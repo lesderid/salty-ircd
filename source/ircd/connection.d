@@ -7,6 +7,7 @@ import std.range;
 import std.conv;
 import std.socket;
 import std.utf;
+import std.datetime;
 
 import vibe.core.core;
 import vibe.stream.operations;
@@ -28,16 +29,18 @@ class Connection
 	string hostname;
 	char[] modes;
 
+	SysTime lastMessageTime;
+
+	string awayMessage;
+
+	bool connected;
+
 	@property auto channels() { return _server.channels.filter!(c => c.members.canFind(this)); }
 
 	@property string mask() { return nick ~ "!" ~ user ~ "@" ~ hostname; }
 	@property bool registered() { return nick !is null && user !is null; }
 	@property bool isOperator() { return modes.canFind('o') || modes.canFind('O'); }
 	@property string servername() { return _server.name; } //TODO: Support server linking
-
-	string awayMessage;
-
-	bool connected;
 
 	this(TCPConnection connection, Server server)
 	{
@@ -102,6 +105,13 @@ class Connection
 				//TODO: The actual Throwable could be useful?
 				connected = _connection.connected;
 				continue;
+			}
+
+			//NOTE: The RFCs don't specify what 'being idle' means
+			//		We assume that it's sending any message that isn't a PING/PONG.
+			if(message.command != "PING" && message.command != "PONG")
+			{
+				lastMessageTime = Clock.currTime;
 			}
 
 			writeln("C> " ~ message.toString);
@@ -184,6 +194,10 @@ class Connection
 				case "ISON":
 					if(!registered) sendErrNotRegistered();
 					else onIson(message);
+					break;
+				case "WHOIS":
+					if(!registered) sendErrNotRegistered();
+					else onWhois(message);
 					break;
 				default:
 					writeln("unknown command '", message.command, "'");
@@ -656,6 +670,33 @@ class Connection
 		//		For this implementation, we assume the example is wrong, like most clients seem to assume as well.
 		//		(Other server implementations usually seem to support both interpretations.)
 		_server.ison(this, message.parameters[0].split);
+	}
+
+	void onWhois(Message message)
+	{
+		if(message.parameters.length < 1)
+		{
+			sendErrNoNickGiven();
+			return;
+		}
+		else if(message.parameters.length > 1)
+		{
+			notImplemented("forwarding WHOIS to another server");
+			return;
+		}
+
+		auto mask = message.parameters[0];
+		//TODO: Support user masks
+		if(!_server.canFindConnectionByNick(mask) || !_server.findConnectionByNick(mask)[0].visibleTo(this))
+		{
+			sendErrNoSuchNick(mask);
+		}
+		else
+		{
+			_server.whois(this, mask);
+		}
+
+		send(Message(_server.name, "318", [nick, mask, "End of WHOIS list"], true));
 	}
 
 	void sendWhoReply(string channel, Connection user, uint hopCount)
