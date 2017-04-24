@@ -318,7 +318,7 @@ class Server
 
 	void invite(Connection inviter, string target, string channelName)
 	{
-		auto user = connections.find!(c => c.nick = target)[0];
+		auto user = findConnectionByNick(target)[0];
 		user.send(Message(inviter.mask, "INVITE", [user.nick, channelName]));
 	}
 
