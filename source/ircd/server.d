@@ -383,6 +383,20 @@ class Server
 		connection.send(Message(name, "319", [connection.nick, user.nick, userChannels], true));
 	}
 
+	void kill(Connection killer, string nick, string comment)
+	{
+		auto user = findConnectionByNick(nick)[0];
+
+		user.send(Message(killer.mask, "KILL", [nick, comment], true));
+
+		//TODO: Find out if any RFC specifies a QUIT message
+		quit(user, "Killed by " ~ killer.nick ~ " (" ~ comment ~ ")");
+
+		//TODO: Find out if what we have to send here
+		user.send(Message(null, "ERROR", ["Closing Link: Killed by " ~ killer.nick ~ " (" ~ comment ~ ")"], true));
+		user.closeConnection();
+	}
+
 	void listen(ushort port = 6667)
 	{
 		listenTCP(port, &acceptConnection);

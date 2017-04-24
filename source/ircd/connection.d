@@ -72,6 +72,11 @@ class Connection
 		_connection.write(messageString ~ "\r\n");
 	}
 
+	void closeConnection()
+	{
+		_connection.close();
+	}
+
 	//sends the message to all clients who have a channel in common with this client
 	void sendToPeers(Message message)
 	{
@@ -189,6 +194,9 @@ class Connection
 					break;
 				case "WHOIS":
 					onWhois(message);
+					break;
+				case "KILL":
+					onKill(message);
 					break;
 				default:
 					writeln("unknown command '", message.command, "'");
@@ -690,6 +698,32 @@ class Connection
 		send(Message(_server.name, "318", [nick, mask, "End of WHOIS list"], true));
 	}
 
+	void onKill(Message message)
+	{
+		if(!isOperator)
+		{
+			sendErrNoPrivileges();
+			return;
+		}
+
+		if(message.parameters.length < 2)
+		{
+			sendErrNeedMoreParams(message.command);
+			return;
+		}
+
+		auto nick = message.parameters[0];
+		if(!_server.canFindConnectionByNick(nick))
+		{
+			sendErrNoSuchNick(nick);
+			return;
+		}
+
+		auto comment = message.parameters[1];
+
+		_server.kill(this, nick, comment);
+	}
+
 	void sendWhoReply(string channel, Connection user, uint hopCount)
 	{
 		auto flags = user.modes.canFind('a') ? "G" : "H";
@@ -753,6 +787,11 @@ class Connection
 	void sendErrNeedMoreParams(string command)
 	{
 		send(Message(_server.name, "461", [nick, command, "Not enough parameters"], true));
+	}
+
+	void sendErrNoPrivileges()
+	{
+		send(Message(_server.name, "481", [nick, "Permission Denied- You're not an IRC operator"], true));
 	}
 
 	void sendErrChanopPrivsNeeded(string channel)
