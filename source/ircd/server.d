@@ -156,21 +156,9 @@ class Server
 	{
 		auto channel = connection.channels.array.find!(c => c.name.toIRCLower == channelName.toIRCLower)[0];
 
-		foreach(member; channel.members)
-		{
-			if(partMessage !is null)
-			{
-				member.send(Message(connection.mask, "PART", [channelName, partMessage], true));
-			}
-			else
-			{
-				member.send(Message(connection.mask, "PART", [channelName]));
-			}
-		}
+		channel.part(connection, partMessage);
 
-		channel.members = channel.members.remove!(m => m == connection);
-
-		if(channel.members.length == 0)
+		if(channel.members.empty)
 		{
 			channels = channels.remove!(c => c == channel);
 		}
@@ -183,7 +171,7 @@ class Server
 		{
 			peers ~= channel.members;
 			channel.members = channel.members.remove!(m => m == connection);
-			if(channel.members.length == 0)
+			if(channel.members.empty)
 			{
 				channels = channels.remove!(c => c == channel);
 			}
@@ -395,6 +383,14 @@ class Server
 		//TODO: Find out if what we have to send here
 		user.send(Message(null, "ERROR", ["Closing Link: Killed by " ~ killer.nick ~ " (" ~ comment ~ ")"], true));
 		user.closeConnection();
+	}
+
+	void kick(Connection kicker, string channelName, string nick, string comment)
+	{
+		auto channel = findChannelByName(channelName)[0];
+		auto user = findConnectionByNick(nick)[0];
+
+		channel.kick(kicker, user, comment);
 	}
 
 	void listen(ushort port = 6667)

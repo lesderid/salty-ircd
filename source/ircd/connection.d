@@ -213,6 +213,9 @@ class Connection
 				case "KILL":
 					onKill(message);
 					break;
+				case "KICK":
+					onKick(message);
+					break;
 				default:
 					writeln("unknown command '", message.command, "'");
 					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
@@ -739,6 +742,60 @@ class Connection
 		_server.kill(this, nick, comment);
 	}
 
+	void onKick(Message message)
+	{
+		if(message.parameters.length < 2)
+		{
+			sendErrNeedMoreParams(message.command);
+			return;
+		}
+
+		auto channelList = message.parameters[0].split(',');
+		auto userList = message.parameters[1].split(',');
+		auto comment = message.parameters.length > 2 ? message.parameters[2] : nick;
+
+		if(channelList.length != 1 && channelList.length != userList.length)
+		{
+			//TODO: Figure out what the right error is here
+			sendErrNeedMoreParams(message.command);
+			return;
+		}
+
+		foreach(i, nick; userList)
+		{
+			auto channelName = channelList[0];
+			if(channelList.length != 1)
+			{
+				channelName = channelList[i];
+			}
+
+			if(!_server.canFindChannelByName(channelName))
+			{
+				sendErrNoSuchChannel(channelName);
+			}
+			else
+			{
+				auto channel = _server.findChannelByName(channelName)[0];
+				if(!channel.members.canFind(this))
+				{
+					sendErrNotOnChannel(channelName);
+				}
+				else if(!channel.memberModes[this].canFind('o'))
+				{
+					sendErrChanopPrivsNeeded(channelName);
+				}
+				else if(!channel.members.canFind!(m => m.nick.toIRCLower == nick.toIRCLower))
+				{
+					sendErrUserNotInChannel(nick, channelName);
+				}
+				else
+				{
+					_server.kick(this, channelName, nick, comment);
+				}
+			}
+		}
+	}
+
 	void sendWhoReply(string channel, Connection user, uint hopCount)
 	{
 		auto flags = user.modes.canFind('a') ? "G" : "H";
@@ -787,6 +844,11 @@ class Connection
 	void sendErrNoNickGiven()
 	{
 		send(Message(_server.name, "431", [nick, "No nickname given"], true));
+	}
+
+	void sendErrUserNotInChannel(string otherNick, string channel)
+	{
+		send(Message(_server.name, "441", [nick, otherNick, channel, "They aren't on that channel"], true));
 	}
 
 	void sendErrNotOnChannel(string channel)

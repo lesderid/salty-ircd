@@ -36,6 +36,24 @@ class Channel
 		}
 	}
 
+	void part(Connection connection, string partMessage)
+	{
+		foreach(member; members)
+		{
+			if(partMessage !is null)
+			{
+				member.send(Message(connection.mask, "PART", [name, partMessage], true));
+			}
+			else
+			{
+				member.send(Message(connection.mask, "PART", [name]));
+			}
+		}
+
+		members = members.remove!(m => m == connection);
+		memberModes.remove(connection);
+	}
+
 	void sendNames(Connection connection, bool sendRplEndOfNames = true)
 	{
 		string channelType;
@@ -61,16 +79,6 @@ class Channel
 		{
 			connection.sendRplEndOfNames(name);
 		}
-	}
-
-	string prefixedNick(Connection member)
-	{
-		if(memberModes[member].canFind('o'))
-		{
-			return '@' ~ member.nick;
-		}
-
-		return member.nick;
 	}
 
 	void sendPrivMsg(Connection sender, string text)
@@ -109,6 +117,27 @@ class Channel
 		{
 			member.send(Message(connection.mask, "TOPIC", [name, newTopic], true));
 		}
+	}
+
+	void kick(Connection kicker, Connection user, string comment)
+	{
+		foreach(member; members)
+		{
+			member.send(Message(kicker.mask, "KICK", [name, user.nick, comment], true));
+		}
+
+		members = members.remove!(m => m == user);
+		memberModes.remove(user);
+	}
+
+	string prefixedNick(Connection member)
+	{
+		if(memberModes[member].canFind('o'))
+		{
+			return '@' ~ member.nick;
+		}
+
+		return member.nick;
 	}
 
 	bool visibleTo(Connection connection)
