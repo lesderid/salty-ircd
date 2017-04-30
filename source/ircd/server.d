@@ -121,7 +121,7 @@ class Server
 
 	bool canFindChannelByName(string name)
 	{
-		return !findConnectionByNick(name).empty;
+		return !findChannelByName(name).empty;
 	}
 
 	void join(Connection connection, string channelName)
