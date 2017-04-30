@@ -10,22 +10,30 @@ import ircd.message;
 class Channel
 {
 	string name;
-
-	Connection[] members;
-	Connection owner;
-
 	string topic = "";
 
+	Connection[] members;
 	char[] modes;
+	char[][Connection] memberModes;
 
 	private Server _server;
 
-	this(string name, Connection owner, Server server)
+	this(string name, Server server)
 	{
 		this.name = name;
-		this.owner = owner;
-		this.members = [owner];
+		this.members = [];
 		this._server = server;
+	}
+
+	void join(Connection connection)
+	{
+		members ~= connection;
+		memberModes[connection] = null;
+
+		if(members.length == 1)
+		{
+			memberModes[connection] ~= 'o';
+		}
 	}
 
 	void sendNames(Connection connection, bool sendRplEndOfNames = true)
@@ -47,12 +55,22 @@ class Channel
 
 		auto onChannel = members.canFind(connection);
 
-		connection.send(Message(_server.name, "353", [connection.nick, channelType, name, members.filter!(m => onChannel || !m.modes.canFind('i')).map!(m => m.nick).join(' ')], true));
+		connection.send(Message(_server.name, "353", [connection.nick, channelType, name, members.filter!(m => onChannel || !m.modes.canFind('i')).map!(m => prefixedNick(m)).join(' ')], true));
 
 		if(sendRplEndOfNames)
 		{
 			connection.sendRplEndOfNames(name);
 		}
+	}
+
+	string prefixedNick(Connection member)
+	{
+		if(memberModes[member].canFind('o'))
+		{
+			return '@' ~ member.nick;
+		}
+
+		return member.nick;
 	}
 
 	void sendPrivMsg(Connection sender, string text)

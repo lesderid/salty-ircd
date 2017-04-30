@@ -60,6 +60,21 @@ class Connection
 		return 0;
 	}
 
+	override bool opEquals(Object o)
+	{
+		Connection other;
+		if((other = cast(Connection)o) !is null)
+		{
+			return nick == other.nick;
+		}
+		return false;
+	}
+
+	override ulong toHash()
+	{
+		return typeid(nick).getHash(&nick);
+	}
+
 	bool visibleTo(Connection other)
 	{
 		return !modes.canFind('i') || channels.any!(c => c.members.canFind(other));

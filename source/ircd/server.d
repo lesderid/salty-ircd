@@ -130,14 +130,14 @@ class Server
 		Channel channel;
 		if(channelRange.empty)
 		{
-			channel = new Channel(channelName, connection, this);
+			channel = new Channel(channelName, this);
 			channels ~= channel;
 		}
 		else
 		{
 			channel = channelRange[0];
-			channel.members ~= connection;
 		}
+		channel.join(connection);
 
 		foreach(member; channel.members)
 		{
