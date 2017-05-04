@@ -216,6 +216,9 @@ class Connection
 				case "KICK":
 					onKick(message);
 					break;
+				case "MODE":
+					onMode(message);
+					break;
 				default:
 					writeln("unknown command '", message.command, "'");
 					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
@@ -463,8 +466,7 @@ class Connection
 	{
 		if(message.parameters.length == 0)
 		{
-			//NOTE: byCodeUnit is necessary due to auto-decoding (https://wiki.dlang.org/Language_issues#Unicode_and_ranges)
-			modes = modes.byCodeUnit.remove!(a => a == 'a').array;
+			removeMode('a');
 			awayMessage = null;
 			send(Message(_server.name, "305", [nick, "You are no longer marked as being away"], true));
 		}
@@ -796,6 +798,96 @@ class Connection
 		}
 	}
 
+	void onMode(Message message)
+	{
+		if(message.parameters.empty)
+		{
+			sendErrNeedMoreParams(message.command);
+			return;
+		}
+
+		auto target = message.parameters[0];
+		if(Server.isValidNick(target))
+		{
+			onUserMode(message);
+		}
+		else if(Server.isValidChannelName(target))
+		{
+			onChannelMode(message);
+		}
+		else
+		{
+			//TODO: If RFC-strictness is off, send an error
+		}
+	}
+
+	void onUserMode(Message message)
+	{
+		auto target = message.parameters[0];
+
+		if(target.toIRCLower != nick.toIRCLower)
+		{
+			//TODO: If RFC-strictness is off, use a different error message when viewing modes and when changing modes
+			send(Message(_server.name, "502", [nick, "Cannot change mode for other users"], true));
+			return;
+		}
+
+		if(message.parameters.count == 1)
+		{
+			send(Message(_server.name, "221", [nick, "+" ~ modes.idup]));
+		}
+		else
+		{
+			foreach(modeString; message.parameters[1 .. $])
+			{
+				auto add = modeString[0] == '+';
+				if(!add && modeString[0] != '-')
+				{
+					//TODO: If RFC-strictness is off, send a malformed message error
+					continue;
+				}
+
+				if(modeString.length == 1)
+				{
+					continue;
+				}
+
+				auto changedModes = modeString[1 .. $];
+				foreach(mode; changedModes)
+				{
+					//when RFC-strictness is off, maybe send an error when trying to do an illegal change
+					switch(mode)
+					{
+						case 'i':
+						case 'w':
+						case 's':
+							if(add) modes ~= mode;
+							else removeMode(mode);
+							break;
+						case 'o':
+						case 'O':
+							if(!add) removeMode(mode);
+							break;
+						case 'r':
+							if(add) modes ~= 'r';
+							break;
+						case 'a':
+							//ignore
+							break;
+						default:
+							send(Message(_server.name, "501", [nick, "Unknown MODE flag"], true));
+							break;
+					}
+				}
+			}
+		}
+	}
+
+	void onChannelMode(Message message)
+	{
+		notImplemented("channel mode message");
+	}
+
 	void sendWhoReply(string channel, Connection user, uint hopCount)
 	{
 		auto flags = user.modes.canFind('a') ? "G" : "H";
@@ -919,6 +1011,12 @@ class Connection
 		}
 
 		return modes;
+	}
+
+	void removeMode(char mode)
+	{
+		//NOTE: byCodeUnit is necessary due to auto-decoding (https://wiki.dlang.org/Language_issues#Unicode_and_ranges)
+		modes = modes.byCodeUnit.remove!(a => a == mode).array;
 	}
 }
 
