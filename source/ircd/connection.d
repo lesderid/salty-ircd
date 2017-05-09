@@ -507,8 +507,7 @@ class Connection
 			{
 				sendErrNotOnChannel(channelName);
 			}
-			//TODO: Allow operators to set flags
-			else if(channels.find!(c => c.name.toIRCLower == channelName.toIRCLower).map!(c => c.modes.canFind('t') /* && this user isn't an operator */).array[0])
+			else if(channels.find!(c => c.name.toIRCLower == channelName.toIRCLower).map!(c => c.modes.canFind('t') && !c.memberModes[this].canFind('o')).array[0])
 			{
 				sendErrChanopPrivsNeeded(channelName);
 			}
@@ -607,7 +606,7 @@ class Connection
 			{
 				send(Message(_server.name, "443", [nick, targetUser.nick, channel.name, "is already on channel"], true));
 			}
-			else if(channel.modes.canFind('i') /* TODO: and this connection isn't a chanop */)
+			else if(channel.modes.canFind('i') && !channel.memberModes[this].canFind('o'))
 			{
 				sendErrChanopPrivsNeeded(channel.name);
 			}
@@ -832,7 +831,7 @@ class Connection
 			return;
 		}
 
-		if(message.parameters.count == 1)
+		if(message.parameters.length == 1)
 		{
 			send(Message(_server.name, "221", [nick, "+" ~ modes.idup]));
 		}
@@ -885,7 +884,116 @@ class Connection
 
 	void onChannelMode(Message message)
 	{
-		notImplemented("channel mode message");
+		auto channelRange = _server.findChannelByName(message.parameters[0]);
+		if(channelRange.empty)
+		{
+			//TODO: If RFC-strictness is off, send an error message when the channel doesn't exist
+			return;
+		}
+		auto channel = channelRange[0];
+
+		if(message.parameters.length == 1)
+		{
+			channel.sendModes(this);
+		}
+		else if(message.parameters.length == 2 && ["+b", "e", "I"].canFind(message.parameters[1]))
+		{
+			notImplemented("querying ban/exception/invite lists");
+		}
+		else
+		{
+			if(!channel.memberModes[this].canFind('o'))
+			{
+				sendErrChanopPrivsNeeded(channel.name);
+				return;
+			}
+
+			for(auto i = 1; i < message.parameters.length; i++)
+			{
+				auto modeString = message.parameters[i];
+				auto add = modeString[0] == '+';
+				if(!add && modeString[0] != '-')
+				{
+					//TODO: If RFC-strictness is off, send a malformed message error
+					return;
+				}
+
+				if(modeString.length == 1)
+				{
+					continue;
+				}
+
+				char[] processedModes;
+				string[] processedParameters;
+
+				auto changedModes = modeString[1 .. $];
+Lforeach:
+				foreach(mode; changedModes)
+				{
+					//when RFC-strictness is off, maybe send an error when trying to do an illegal change
+					switch(mode)
+					{
+						case 'o':
+						case 'v':
+							if(i + 1 == message.parameters.length)
+							{
+								//TODO: Figure out what to do when we need more mode parameters
+								break Lforeach;
+							}
+							auto memberNick = message.parameters[++i];
+
+							auto memberRange = _server.findConnectionByNick(memberNick);
+							if(memberRange.empty)
+							{
+								sendErrNoSuchNick(memberNick);
+								break Lforeach;
+							}
+
+							auto member = memberRange[0];
+							if(!channel.members.canFind(member))
+							{
+								sendErrUserNotInChannel(memberNick, channel.name);
+								break Lforeach;
+							}
+
+							auto success = false;
+							if(add) success = channel.setMemberMode(this, member, mode);
+							else success = channel.unsetMemberMode(this, member, mode);
+							if(success)
+							{
+								processedModes ~= mode;
+								processedParameters ~= memberNick;
+							}
+							break;
+						case 'i': //TODO: Implement invite-only channels
+						case 'm': //TODO: Implement channel moderation
+						case 'n': //TODO: Implement the no messages from clients on the outside flag
+						case 'p':
+						case 's':
+						case 't':
+							auto success = false;
+							if(add) channel.setMode(this, mode);
+							else channel.unsetMode(this, mode);
+							if(success)
+							{
+								processedModes ~= mode;
+							}
+							break;
+						default:
+							send(Message(_server.name, "472", [nick, [mode], "is unknown mode char to me for " ~ channel.name], true));
+							break;
+					}
+				}
+
+				if(!processedModes.empty)
+				{
+					foreach(member; channel.members)
+					{
+						member.send(Message(mask, "MODE", [channel.name, (add ? '+' : '-') ~ processedModes.idup] ~ processedParameters, false));
+					}
+				}
+			}
+		}
 	}
 
 	void sendWhoReply(string channel, Connection user, uint hopCount)

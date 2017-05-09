@@ -16,6 +16,9 @@ class Channel
 	char[] modes;
 	char[][Connection] memberModes;
 
+	string key; //TODO: Fully implement key
+	//TODO: Implement member limit (+l)
+
 	private Server _server;
 
 	this(string name, Server server)
@@ -130,11 +133,80 @@ class Channel
 		memberModes.remove(user);
 	}
 
+	void sendModes(Connection user)
+	{
+		if(members.canFind(user) && key !is null)
+		{
+			user.send(Message(_server.name, "324", [user.nick, name, "+" ~ modes.idup ~ "k", key]));
+		}
+		else
+		{
+			user.send(Message(_server.name, "324", [user.nick, name, "+" ~ modes.idup]));
+		}
+	}
+
+	bool setMemberMode(Connection setter, Connection target, char mode)
+	{
+		if(memberModes[target].canFind(mode))
+		{
+			return false;
+		}
+		memberModes[target] ~= mode;
+
+		return true;
+	}
+
+	bool unsetMemberMode(Connection setter, Connection target, char mode)
+	{
+		if(!memberModes[target].canFind(mode))
+		{
+			return false;
+		}
+
+		//NOTE: byCodeUnit is necessary due to auto-decoding (https://wiki.dlang.org/Language_issues#Unicode_and_ranges)
+		import std.utf : byCodeUnit;
+		import std.range : array;
+		memberModes[target] = memberModes[target].byCodeUnit.remove!(m => m == mode).array;
+
+		return true;
+	}
+
+	bool setMode(Connection setter, char mode)
+	{
+		if(modes.canFind(mode))
+		{
+			return false;
+		}
+
+		modes ~= mode;
+
+		return true;
+	}
+
+	bool unsetMode(Connection setter, char mode)
+	{
+		if(!modes.canFind(mode))
+		{
+			return false;
+		}
+
+		//NOTE: byCodeUnit is necessary due to auto-decoding (https://wiki.dlang.org/Language_issues#Unicode_and_ranges)
+		import std.utf : byCodeUnit;
+		import std.range : array;
+		modes = modes.byCodeUnit.remove!(m => m == mode).array;
+
+		return true;
+	}
+
 	string prefixedNick(Connection member)
 	{
 		if(memberModes[member].canFind('o'))
 		{
 			return '@' ~ member.nick;
+		}
+		else if(memberModes[member].canFind('v'))
+		{
+			return '+' ~ member.nick;
 		}
 
 		return member.nick;
