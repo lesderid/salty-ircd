@@ -41,6 +41,9 @@ class Connection
 	@property bool isOperator() { return modes.canFind('o') || modes.canFind('O'); }
 	@property string servername() { return _server.name; } //TODO: Support server linking
 
+	//TODO: Maybe replace string's opEquals (or make a new string class/struct) to compare with toIRCLower
+	//TODO: Read errata
+
 	this(TCPConnection connection, Server server)
 	{
 		_connection = connection;
@@ -263,7 +266,6 @@ class Connection
 
 		auto wasRegistered = registered;
 
-		//TODO: Check validity etc.
 		nick = newNick;
 
 		if(!wasRegistered && registered)
@@ -323,14 +325,18 @@ class Connection
 			return;
 		}
 
-		auto channel = message.parameters[0];
-		if(!Server.isValidChannelName(channel))
+		auto channelList = message.parameters[0].split(',');
+		foreach(channel; channelList)
 		{
-			sendErrNoSuchChannel(channel);
-		}
-		else
-		{
-			_server.join(this, channel);
+			//TODO: Check if the user isn't already on the channel
+			if(!Server.isValidChannelName(channel))
+			{
+				sendErrNoSuchChannel(channel);
+			}
+			else
+			{
+				_server.join(this, channel);
+			}
 		}
 	}
 
@@ -342,26 +348,27 @@ class Connection
 			return;
 		}
 
-		//TODO: Support channel lists
-		//TODO: Check if user is member of channel(s)
-		auto channel = message.parameters[0];
-		if(!Server.isValidChannelName(channel))
+		auto channelList = message.parameters[0].split(',');
+		foreach(channel; channelList)
 		{
-			sendErrNoSuchChannel(channel);
-		}
-		else if(!_server.canFindChannelByName(channel))
-		{
-			send(Message(_server.name, "442", [nick, channel, "You're not on that channel"], true));
-		}
-		else
-		{
-			if(message.parameters.length > 1)
+			if(!Server.isValidChannelName(channel))
 			{
-				_server.part(this, channel, message.parameters[1]);
+				sendErrNoSuchChannel(channel);
+			}
+			else if(!_server.canFindChannelByName(channel) || !channels.canFind!(c => c.name.toIRCLower == channel.toIRCLower))
+			{
+				send(Message(_server.name, "442", [nick, channel, "You're not on that channel"], true));
 			}
 			else
 			{
-				_server.part(this, channel, null);
+				if(message.parameters.length > 1)
+				{
+					_server.part(this, channel, message.parameters[1]);
+				}
+				else
+				{
+					_server.part(this, channel, null);
+				}
 			}
 		}
 	}
@@ -1041,7 +1048,7 @@ Lforeach:
 								{
 									limit = limitString.to!uint;
 								}
-								catch(Exception)
+								catch(Throwable)
 								{
 									break Lforeach;
 								}
@@ -1090,11 +1097,11 @@ Lforeach:
 		}
 	}
 
-	void sendWhoReply(string channel, Connection user, uint hopCount)
+	void sendWhoReply(string channel, Connection user, string nickPrefix, uint hopCount)
 	{
 		auto flags = user.modes.canFind('a') ? "G" : "H";
 		if(user.isOperator) flags ~= "*";
-		//TODO: Add channel prefix
+		flags ~= nickPrefix;
 
 		send(Message(_server.name, "352", [nick, channel, user.user, user.hostname, user.servername, user.nick, flags, hopCount.to!string ~ " " ~ user.realname], true));
 	}

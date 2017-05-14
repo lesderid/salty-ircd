@@ -208,7 +208,7 @@ class Server
 								  .filter!(c => c.visibleTo(origin)))
 		{
 			//TODO: Support hop count
-			origin.sendWhoReply(channelName, c, 0);
+			origin.sendWhoReply(channelName, c, channel.nickPrefix(c), 0);
 		}
 	}
 
@@ -220,8 +220,9 @@ class Server
 		{
 			//TODO: Don't leak secret/private channels if RFC-strictness is off (the RFCs don't seem to say anything about it?)
 			auto channelName = c.channels.empty ? "*" : c.channels.array[0].name;
+			auto nickPrefix = c.channels.empty ? "" : c.channels.array[0].nickPrefix(c);
 			//TODO: Support hop count
-			origin.sendWhoReply(channelName, c, 0);
+			origin.sendWhoReply(channelName, c, nickPrefix, 0);
 		}
 	}
 
@@ -374,8 +375,7 @@ class Server
 		}
 		auto idleSeconds = (Clock.currTime - user.lastMessageTime).total!"seconds";
 		connection.send(Message(name, "317", [connection.nick, user.nick, idleSeconds.to!string, "seconds idle"], true));
-		//TODO: Prepend nick prefix (i.e. '@' or '+') when applicable
-		auto userChannels = user.channels.map!(c => c.name).join(' ');
+		auto userChannels = user.channels.map!(c => c.nickPrefix(user) ~ c.name).join(' ');
 		connection.send(Message(name, "319", [connection.nick, user.nick, userChannels], true));
 	}
 
@@ -385,10 +385,8 @@ class Server
 
 		user.send(Message(killer.prefix, "KILL", [nick, comment], true));
 
-		//TODO: Find out if any RFC specifies a QUIT message
 		quit(user, "Killed by " ~ killer.nick ~ " (" ~ comment ~ ")");
 
-		//TODO: Find out if what we have to send here
 		user.send(Message(null, "ERROR", ["Closing Link: Killed by " ~ killer.nick ~ " (" ~ comment ~ ")"], true));
 		user.closeConnection();
 	}

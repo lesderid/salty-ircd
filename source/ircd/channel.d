@@ -39,6 +39,10 @@ class Channel
 		{
 			memberModes[connection] ~= 'o';
 		}
+		else
+		{
+			memberModes[connection] = [];
+		}
 	}
 
 	void part(Connection connection, string partMessage)
@@ -300,19 +304,21 @@ class Channel
 		return true;
 	}
 
-	string prefixedNick(Connection member)
+	string nickPrefix(Connection member)
 	{
 		if(memberModes[member].canFind('o'))
 		{
-			return '@' ~ member.nick;
+			return "@";
 		}
 		else if(memberModes[member].canFind('v'))
 		{
-			return '+' ~ member.nick;
+			return "+";
 		}
 
-		return member.nick;
+		return "";
 	}
+
+	string prefixedNick(Connection member) { return nickPrefix(member) ~ member.nick; }
 
 	bool visibleTo(Connection connection)
 	{
