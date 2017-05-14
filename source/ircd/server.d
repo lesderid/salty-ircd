@@ -141,7 +141,7 @@ class Server
 
 		foreach(member; channel.members)
 		{
-			member.send(Message(connection.mask, "JOIN", [channelName]));
+			member.send(Message(connection.prefix, "JOIN", [channelName]));
 		}
 
 		channel.sendNames(connection);
@@ -182,11 +182,11 @@ class Server
 		{
 			if(quitMessage !is null)
 			{
-				peer.send(Message(connection.mask, "QUIT", [quitMessage], true));
+				peer.send(Message(connection.prefix, "QUIT", [quitMessage], true));
 			}
 			else
 			{
-				peer.send(Message(connection.mask, "QUIT", [connection.nick], true));
+				peer.send(Message(connection.prefix, "QUIT", [connection.nick], true));
 			}
 		}
 	}
@@ -226,7 +226,7 @@ class Server
 	void privmsgToUser(Connection sender, string target, string text)
 	{
 		auto user = findConnectionByNick(target)[0];
-		user.send(Message(sender.mask, "PRIVMSG", [target, text], true));
+		user.send(Message(sender.prefix, "PRIVMSG", [target, text], true));
 	}
 
 	void noticeToChannel(Connection sender, string target, string text)
@@ -238,7 +238,7 @@ class Server
 	void noticeToUser(Connection sender, string target, string text)
 	{
 		auto user = findConnectionByNick(target)[0];
-		user.send(Message(sender.mask, "NOTICE", [target, text], true));
+		user.send(Message(sender.prefix, "NOTICE", [target, text], true));
 	}
 
 	void sendChannelTopic(Connection origin, string channelName)
@@ -307,7 +307,7 @@ class Server
 	void invite(Connection inviter, string target, string channelName)
 	{
 		auto user = findConnectionByNick(target)[0];
-		user.send(Message(inviter.mask, "INVITE", [user.nick, channelName]));
+		user.send(Message(inviter.prefix, "INVITE", [user.nick, channelName]));
 	}
 
 	void sendMotd(Connection connection)
@@ -375,7 +375,7 @@ class Server
 	{
 		auto user = findConnectionByNick(nick)[0];
 
-		user.send(Message(killer.mask, "KILL", [nick, comment], true));
+		user.send(Message(killer.prefix, "KILL", [nick, comment], true));
 
 		//TODO: Find out if any RFC specifies a QUIT message
 		quit(user, "Killed by " ~ killer.nick ~ " (" ~ comment ~ ")");

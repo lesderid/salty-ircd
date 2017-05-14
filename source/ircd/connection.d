@@ -22,7 +22,6 @@ class Connection
 	private TCPConnection _connection;
 	private Server _server;
 
-	//TODO: Make into auto-properties (via template)
 	string nick;
 	string user;
 	string realname;
@@ -37,7 +36,7 @@ class Connection
 
 	@property auto channels() { return _server.channels.filter!(c => c.members.canFind(this)); }
 
-	@property string mask() { return nick ~ "!" ~ user ~ "@" ~ hostname; }
+	@property string prefix() { return nick ~ "!" ~ user ~ "@" ~ hostname; }
 	@property bool registered() { return nick !is null && user !is null; }
 	@property bool isOperator() { return modes.canFind('o') || modes.canFind('O'); }
 	@property string servername() { return _server.name; } //TODO: Support server linking
@@ -933,6 +932,8 @@ Lforeach:
 					//when RFC-strictness is off, maybe send an error when trying to do an illegal change
 					switch(mode)
 					{
+						//TODO: When RFC-strictness is on, limit mode changes with parameter to 3 per command
+
 						case 'o':
 						case 'v':
 							if(i + 1 == message.parameters.length)
@@ -989,7 +990,7 @@ Lforeach:
 				{
 					foreach(member; channel.members)
 					{
-						member.send(Message(mask, "MODE", [channel.name, (add ? '+' : '-') ~ processedModes.idup] ~ processedParameters, false));
+						member.send(Message(prefix, "MODE", [channel.name, (add ? '+' : '-') ~ processedModes.idup] ~ processedParameters, false));
 					}
 				}
 			}
@@ -1083,7 +1084,7 @@ Lforeach:
 
 	void sendWelcome()
 	{
-		send(Message(_server.name, "001", [nick, "Welcome to the Internet Relay Network " ~ mask], true));
+		send(Message(_server.name, "001", [nick, "Welcome to the Internet Relay Network " ~ prefix], true));
 		send(Message(_server.name, "002", [nick, "Your host is " ~ _server.name ~ ", running version " ~ _server.versionString], true));
 		send(Message(_server.name, "003", [nick, "This server was created " ~ _server.creationDate], true));
 		send(Message(_server.name, "004", [nick, _server.name, _server.versionString, "w", "snt"]));

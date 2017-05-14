@@ -45,11 +45,11 @@ class Channel
 		{
 			if(partMessage !is null)
 			{
-				member.send(Message(connection.mask, "PART", [name, partMessage], true));
+				member.send(Message(connection.prefix, "PART", [name, partMessage], true));
 			}
 			else
 			{
-				member.send(Message(connection.mask, "PART", [name]));
+				member.send(Message(connection.prefix, "PART", [name]));
 			}
 		}
 
@@ -88,7 +88,7 @@ class Channel
 	{
 		foreach(member; members.filter!(m => m.nick != sender.nick))
 		{
-			member.send(Message(sender.mask, "PRIVMSG", [name, text], true));
+			member.send(Message(sender.prefix, "PRIVMSG", [name, text], true));
 		}
 	}
 
@@ -96,7 +96,7 @@ class Channel
 	{
 		foreach(member; members.filter!(m => m.nick != sender.nick))
 		{
-			member.send(Message(sender.mask, "NOTICE", [name, text], true));
+			member.send(Message(sender.prefix, "NOTICE", [name, text], true));
 		}
 	}
 
@@ -118,7 +118,7 @@ class Channel
 
 		foreach(member; members)
 		{
-			member.send(Message(connection.mask, "TOPIC", [name, newTopic], true));
+			member.send(Message(connection.prefix, "TOPIC", [name, newTopic], true));
 		}
 	}
 
@@ -126,7 +126,7 @@ class Channel
 	{
 		foreach(member; members)
 		{
-			member.send(Message(kicker.mask, "KICK", [name, user.nick, comment], true));
+			member.send(Message(kicker.prefix, "KICK", [name, user.nick, comment], true));
 		}
 
 		members = members.remove!(m => m == user);
