@@ -975,9 +975,9 @@ Lforeach:
 								break Lforeach;
 							}
 
-							auto success = false;
-							if(add) success = channel.setMemberMode(this, member, mode);
-							else success = channel.unsetMemberMode(this, member, mode);
+							bool success;
+							if(add) success = channel.setMemberMode(member, mode);
+							else success = channel.unsetMemberMode(member, mode);
 							if(success)
 							{
 								processedModes ~= mode;
@@ -1000,13 +1000,63 @@ Lforeach:
 								break Lforeach;
 							}
 
-							auto success = false;
-							if(add) success = channel.addMaskListEntry(this, mask, mode);
-							else success = channel.removeMaskListEntry(this, mask, mode);
+							bool success;
+							if(add) success = channel.addMaskListEntry(mask, mode);
+							else success = channel.removeMaskListEntry(mask, mode);
 							if(success)
 							{
 								processedModes ~= mode;
 								processedParameters ~= mask;
+							}
+							break;
+						case 'k': //TODO: Implement channel key
+							if(i + 1 == message.parameters.length)
+							{
+								//TODO: Figure out what to do when we need more mode parameters
+								break Lforeach;
+							}
+							auto key = message.parameters[++i];
+
+							bool success;
+							if(add) success = channel.setKey(key);
+							else success = channel.unsetKey(key);
+							if(success)
+							{
+								processedModes ~= mode;
+								processedParameters ~= key;
+							}
+							break;
+						case 'l': //TODO: Implement user limit
+							if(add)
+							{
+								if(i + 1 == message.parameters.length)
+								{
+									//TODO: Figure out what to do when we need more mode parameters
+									break Lforeach;
+								}
+
+								auto limitString = message.parameters[++i];
+								uint limit = 0;
+								try
+								{
+									limit = limitString.to!uint;
+								}
+								catch(Exception)
+								{
+									break Lforeach;
+								}
+
+								channel.setUserLimit(limit);
+
+								processedModes ~= mode;
+								processedParameters ~= limitString;
+							}
+							else
+							{
+								if(channel.unsetUserLimit())
+								{
+									processedModes ~= mode;
+								}
 							}
 							break;
 						case 'i': //TODO: Implement invite-only channels
@@ -1015,9 +1065,9 @@ Lforeach:
 						case 'p':
 						case 's':
 						case 't':
-							auto success = false;
-							if(add) channel.setMode(this, mode);
-							else channel.unsetMode(this, mode);
+							bool success;
+							if(add) channel.setMode(mode);
+							else channel.unsetMode(mode);
 							if(success)
 							{
 								processedModes ~= mode;

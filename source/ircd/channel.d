@@ -2,6 +2,7 @@ module ircd.channel;
 
 import std.algorithm;
 import std.string;
+import std.typecons : Nullable;
 
 import ircd.connection;
 import ircd.server;
@@ -18,8 +19,8 @@ class Channel
 	char[][Connection] memberModes;
 	string[][char] maskLists;
 
-	string key; //TODO: Fully implement key
-	//TODO: Implement member limit (+l)
+	string key;
+	Nullable!uint userLimit;
 
 	private Server _server;
 
@@ -136,17 +137,27 @@ class Channel
 
 	void sendModes(Connection user)
 	{
+		auto specialModes = "";
+		string[] specialModeParameters;
+
 		if(members.canFind(user) && key !is null)
 		{
-			user.send(Message(_server.name, "324", [user.nick, name, "+" ~ modes.idup ~ "k", key]));
+			specialModes ~= "k";
+			specialModeParameters ~= key;
 		}
-		else
+
+		if(members.canFind(user) && !userLimit.isNull)
 		{
-			user.send(Message(_server.name, "324", [user.nick, name, "+" ~ modes.idup]));
+			import std.conv : to;
+
+			specialModes ~= "l";
+			specialModeParameters ~= userLimit.to!string;
 		}
+
+		user.send(Message(_server.name, "324", [user.nick, name, "+" ~ modes.idup ~ specialModes] ~ specialModeParameters));
 	}
 
-	bool setMemberMode(Connection setter, Connection target, char mode)
+	bool setMemberMode(Connection target, char mode)
 	{
 		if(memberModes[target].canFind(mode))
 		{
@@ -157,7 +168,7 @@ class Channel
 		return true;
 	}
 
-	bool unsetMemberMode(Connection setter, Connection target, char mode)
+	bool unsetMemberMode(Connection target, char mode)
 	{
 		if(!memberModes[target].canFind(mode))
 		{
@@ -172,7 +183,7 @@ class Channel
 		return true;
 	}
 
-	bool setMode(Connection setter, char mode)
+	bool setMode(char mode)
 	{
 		if(modes.canFind(mode))
 		{
@@ -184,7 +195,7 @@ class Channel
 		return true;
 	}
 
-	bool unsetMode(Connection setter, char mode)
+	bool unsetMode(char mode)
 	{
 		if(!modes.canFind(mode))
 		{
@@ -199,7 +210,7 @@ class Channel
 		return true;
 	}
 
-	bool addMaskListEntry(Connection origin, string mask, char mode)
+	bool addMaskListEntry(string mask, char mode)
 	{
 		if(maskLists[mode].canFind!(m => m.toIRCLower == mask.toIRCLower))
 		{
@@ -211,7 +222,7 @@ class Channel
 		return true;
 	}
 
-	bool removeMaskListEntry(Connection origin, string mask, char mode)
+	bool removeMaskListEntry(string mask, char mode)
 	{
 		if(!maskLists[mode].canFind!(m => m.toIRCLower == mask.toIRCLower))
 		{
@@ -251,6 +262,42 @@ class Channel
 		}
 
 		connection.send(Message(_server.name, "347", [connection.nick, name, "End of channel invite list"], true));
+	}
+
+	bool setKey(string key)
+	{
+		this.key = key;
+
+		return true;
+	}
+
+	bool unsetKey(string key)
+	{
+		if(this.key != key)
+		{
+			return false;
+		}
+
+		this.key = null;
+
+		return true;
+	}
+
+	void setUserLimit(uint userLimit)
+	{
+		this.userLimit = userLimit;
+	}
+
+	bool unsetUserLimit()
+	{
+		if(userLimit.isNull)
+		{
+			return false;
+		}
+
+		userLimit.nullify();
+
+		return true;
 	}
 
 	string prefixedNick(Connection member)
