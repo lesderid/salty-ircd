@@ -99,6 +99,14 @@ class Server
 		return true;
 	}
 
+	static bool isValidUserMask(string mask)
+	{
+		import std.regex : ctRegex, matchFirst;
+
+		auto validMaskRegex = ctRegex!r"^([^!]+)!([^@]+)@(.+)$";
+		return !mask.matchFirst(validMaskRegex).empty;
+	}
+
 	Connection[] findConnectionByNick(string nick)
 	{
 		return connections.find!(c => c.nick.toIRCLower == nick.toIRCLower);

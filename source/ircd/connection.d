@@ -79,6 +79,11 @@ class Connection
 		return !modes.canFind('i') || channels.any!(c => c.members.canFind(other));
 	}
 
+	bool matchesMask(string mask)
+	{
+		return wildcardMatch(prefix.toIRCLower, mask.toIRCLower);
+	}
+
 	void send(Message message)
 	{
 		string messageString = message.toString;
@@ -895,9 +900,22 @@ class Connection
 		{
 			channel.sendModes(this);
 		}
+		//TODO: If RFC-strictness is off, also allow '+e' and '+I' (?)
 		else if(message.parameters.length == 2 && ["+b", "e", "I"].canFind(message.parameters[1]))
 		{
-			notImplemented("querying ban/exception/invite lists");
+			auto listChar = message.parameters[1][$ - 1];
+			final switch(listChar)
+			{
+				case 'b':
+					channel.sendBanList(this);
+					break;
+				case 'e':
+					channel.sendExceptList(this);
+					break;
+				case 'I':
+					channel.sendInviteList(this);
+					break;
+			}
 		}
 		else
 		{
@@ -932,7 +950,7 @@ Lforeach:
 					//when RFC-strictness is off, maybe send an error when trying to do an illegal change
 					switch(mode)
 					{
-						//TODO: When RFC-strictness is on, limit mode changes with parameter to 3 per command
+						//TODO: If RFC-strictness is on, limit mode changes with parameter to 3 per command
 
 						case 'o':
 						case 'v':
@@ -964,6 +982,31 @@ Lforeach:
 							{
 								processedModes ~= mode;
 								processedParameters ~= memberNick;
+							}
+							break;
+						case 'b': //TODO: Implement bans
+						case 'e': //TODO: Implement ban exceptions
+						case 'I': //TODO: Implement invite lists
+							if(i + 1 == message.parameters.length)
+							{
+								//TODO: Figure out what to do when we need more mode parameters
+								break Lforeach;
+							}
+							auto mask = message.parameters[++i];
+							//TODO: If RFC-strictness is off, interpret '<nick>' as '<nick>!*@*'
+							if(!Server.isValidUserMask(mask))
+							{
+								//TODO: If RFC-strictness is off, send an error
+								break Lforeach;
+							}
+
+							auto success = false;
+							if(add) success = channel.addMaskListEntry(this, mask, mode);
+							else success = channel.removeMaskListEntry(this, mask, mode);
+							if(success)
+							{
+								processedModes ~= mode;
+								processedParameters ~= mask;
 							}
 							break;
 						case 'i': //TODO: Implement invite-only channels

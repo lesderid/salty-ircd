@@ -6,6 +6,7 @@ import std.string;
 import ircd.connection;
 import ircd.server;
 import ircd.message;
+import ircd.helpers;
 
 class Channel
 {
@@ -15,6 +16,7 @@ class Channel
 	Connection[] members;
 	char[] modes;
 	char[][Connection] memberModes;
+	string[][char] maskLists;
 
 	string key; //TODO: Fully implement key
 	//TODO: Implement member limit (+l)
@@ -24,14 +26,13 @@ class Channel
 	this(string name, Server server)
 	{
 		this.name = name;
-		this.members = [];
 		this._server = server;
+		this.maskLists = ['b' : [], 'e' : [], 'I' : []];
 	}
 
 	void join(Connection connection)
 	{
 		members ~= connection;
-		memberModes[connection] = null;
 
 		if(members.length == 1)
 		{
@@ -196,6 +197,60 @@ class Channel
 		modes = modes.byCodeUnit.remove!(m => m == mode).array;
 
 		return true;
+	}
+
+	bool addMaskListEntry(Connection origin, string mask, char mode)
+	{
+		if(maskLists[mode].canFind!(m => m.toIRCLower == mask.toIRCLower))
+		{
+			return false;
+		}
+
+		maskLists[mode] ~= mask;
+
+		return true;
+	}
+
+	bool removeMaskListEntry(Connection origin, string mask, char mode)
+	{
+		if(!maskLists[mode].canFind!(m => m.toIRCLower == mask.toIRCLower))
+		{
+			return false;
+		}
+
+		maskLists[mode] = maskLists[mode].remove!(m => m.toIRCLower == mask.toIRCLower);
+
+		return true;
+	}
+
+	void sendBanList(Connection connection)
+	{
+		foreach(entry; maskLists['b'])
+		{
+			connection.send(Message(_server.name, "367", [connection.nick, name, entry], false));
+		}
+
+		connection.send(Message(_server.name, "368", [connection.nick, name, "End of channel ban list"], true));
+	}
+
+	void sendExceptList(Connection connection)
+	{
+		foreach(entry; maskLists['e'])
+		{
+			connection.send(Message(_server.name, "348", [connection.nick, name, entry], false));
+		}
+
+		connection.send(Message(_server.name, "349", [connection.nick, name, "End of channel exception list"], true));
+	}
+
+	void sendInviteList(Connection connection)
+	{
+		foreach(entry; maskLists['I'])
+		{
+			connection.send(Message(_server.name, "346", [connection.nick, name, entry], false));
+		}
+
+		connection.send(Message(_server.name, "347", [connection.nick, name, "End of channel invite list"], true));
 	}
 
 	string prefixedNick(Connection member)
