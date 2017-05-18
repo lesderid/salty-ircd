@@ -1123,8 +1123,8 @@ Lforeach:
 
 	void sendRplInviting(string channelName, string name)
 	{
-		//TODO: If RFC-strictness is off, send parameters in reverse order
-		send(Message(_server.name, "341", [nick, channelName, name]));
+		//TODO: If errata are being ignored, send nick and channel name in reverse order
+		send(Message(_server.name, "341", [nick, name, channelName]));
 	}
 
 	void sendRplEndOfNames(string channelName)
