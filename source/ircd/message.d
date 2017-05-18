@@ -14,6 +14,9 @@ struct Message
 	string[] parameters;
 	bool prefixedParameter;
 
+	//NOTE: The RFCs don't state what this is exactly, but common implementations use the byte count of the message parameters
+	ulong bytes;
+
 	static Message fromString(string line)
 	{
 		string prefix = null;
@@ -32,6 +35,7 @@ struct Message
 
 		auto command = line[0 .. line.indexOf(' ')];
 		line = line[command.length + 1 .. $];
+		auto bytes = line.length;
 		string[] params = [];
 		bool prefixedParam;
 		while(true)
@@ -55,7 +59,7 @@ struct Message
 			}
 		}
 
-		return Message(prefix, command, params, prefixedParam);
+		return Message(prefix, command, params, prefixedParam, bytes);
 	}
 
 	string toString()

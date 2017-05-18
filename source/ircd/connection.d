@@ -226,11 +226,16 @@ class Connection
 				case "MODE":
 					onMode(message);
 					break;
+				case "STATS":
+					onStats(message);
+					break;
 				default:
 					writeln("unknown command '", message.command, "'");
 					send(Message(_server.name, "421", [nick, message.command, "Unknown command"]));
-					break;
+					continue;
 			}
+
+			_server.updateCommandStatistics(message);
 		}
 
 		onDisconnect();
@@ -1095,6 +1100,37 @@ Lforeach:
 				}
 			}
 		}
+	}
+
+	void onStats(Message message)
+	{
+		if(message.parameters.length > 1)
+		{
+			notImplemented("forwarding STATS to another other server");
+			return;
+		}
+
+		char statsLetter = message.parameters.length > 0 ? message.parameters[0][0] : '*';
+
+		switch(statsLetter)
+		{
+			case 'l':
+				notImplemented("STATS server link information");
+				break;
+			case 'm':
+				_server.sendCommandUsage(this);
+				break;
+			case 'o':
+				notImplemented("O-lines and O-line querying");
+				break;
+			case 'u':
+				_server.sendUptime(this);
+				break;
+			default:
+				break;
+		}
+
+		send(Message(_server.name, "219", [nick, [statsLetter].idup, "End of STATS report"], true));
 	}
 
 	void sendWhoReply(string channel, Connection user, string nickPrefix, uint hopCount)

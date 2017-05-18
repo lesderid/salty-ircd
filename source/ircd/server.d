@@ -32,11 +32,18 @@ class Server
 
 	Channel[] channels;
 
+	private uint[string] _commandUsage;
+	private ulong[string] _commandBytes;
+
+	private SysTime _startTime;
+
 	this()
 	{
 		name = Socket.hostName;
 
 		readMotd();
+
+		_startTime = Clock.currTime;
 
 		runTask(&pingLoop);
 	}
@@ -397,6 +404,37 @@ class Server
 		auto user = findConnectionByNick(nick)[0];
 
 		channel.kick(kicker, user, comment);
+	}
+
+	void updateCommandStatistics(Message message)
+	{
+		auto command = message.command.toUpper;
+		if(command !in _commandUsage)
+		{
+			_commandUsage[command] = 0;
+			_commandBytes[command] = 0;
+		}
+		_commandUsage[command]++;
+		_commandBytes[command] += message.bytes;
+	}
+
+	void sendCommandUsage(Connection connection)
+	{
+		foreach(command, count; _commandUsage)
+		{
+			//TODO: Implement remote count
+			connection.send(Message(name, "212", [connection.nick, command, count.to!string, _commandBytes[command].to!string, "0"], false));
+		}
+	}
+
+	void sendUptime(Connection connection)
+	{
+		import std.format : format;
+
+		auto uptime = (Clock.currTime - _startTime).split!("days", "hours", "minutes", "seconds");
+
+		auto uptimeString = format!"Server Up %d days %d:%02d:%02d"(uptime.days, uptime.hours, uptime.minutes, uptime.seconds);
+		connection.send(Message(name, "242", [connection.nick, uptimeString], true));
 	}
 
 	void listen(ushort port = 6667)
