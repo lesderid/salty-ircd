@@ -1083,8 +1083,8 @@ Lforeach:
 						case 's':
 						case 't':
 							bool success;
-							if(add) channel.setMode(mode);
-							else channel.unsetMode(mode);
+							if(add) success = channel.setMode(mode);
+							else success = channel.unsetMode(mode);
 							if(success)
 							{
 								processedModes ~= mode;
