@@ -352,8 +352,7 @@ class Connection
 					{
 						send(Message(_server.name, "474", [nick, channelName, "Cannot join channel (+b)"], true));
 					}
-					//TODO: Also account for invites from the INVITE command
-					else if(channel.modes.canFind('i') && !channel.maskLists['I'].any!(m => matchesMask(m)))
+					else if(channel.modes.canFind('i') && !(channel.maskLists['I'].any!(m => matchesMask(m)) || channel.inviteHolders.canFind(this)))
 					{
 						send(Message(_server.name, "473", [nick, channelName, "Cannot join channel (+i)"], true));
 					}

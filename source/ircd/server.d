@@ -323,6 +323,10 @@ class Server
 	void invite(Connection inviter, string target, string channelName)
 	{
 		auto user = findConnectionByNick(target)[0];
+		auto channel = findChannelByName(channelName)[0];
+
+		channel.invite(user);
+
 		user.send(Message(inviter.prefix, "INVITE", [user.nick, channelName]));
 	}
 

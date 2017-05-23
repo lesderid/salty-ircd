@@ -21,6 +21,7 @@ class Channel
 
 	string key;
 	Nullable!uint userLimit;
+	Connection[] inviteHolders;
 
 	private Server _server;
 
@@ -43,6 +44,11 @@ class Channel
 		{
 			memberModes[connection] = [];
 		}
+
+		if(inviteHolders.canFind(connection))
+		{
+			inviteHolders = inviteHolders.remove!(c => c == connection);
+		}
 	}
 
 	void part(Connection connection, string partMessage)
@@ -61,6 +67,11 @@ class Channel
 
 		members = members.remove!(m => m == connection);
 		memberModes.remove(connection);
+	}
+
+	void invite(Connection connection)
+	{
+		inviteHolders ~= connection;
 	}
 
 	void sendNames(Connection connection, bool sendRplEndOfNames = true)
@@ -195,6 +206,8 @@ class Channel
 		}
 
 		modes ~= mode;
+
+		//TODO: If RFC-strictness is off, clear the invite list when +i is set
 
 		return true;
 	}
