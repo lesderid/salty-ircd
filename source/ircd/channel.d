@@ -324,4 +324,22 @@ class Channel
 	{
 		return members.canFind(connection) || !modes.canFind('s') && !modes.canFind('p');
 	}
+
+	bool canReceiveMessagesFromUser(Connection connection)
+	{
+		if(modes.canFind('n') && !members.canFind(connection))
+		{
+			return false;
+		}
+		else if(modes.canFind('m') && nickPrefix(connection).empty)
+		{
+			return false;
+		}
+		else if(maskLists['b'].any!(m => connection.matchesMask(m)) && !maskLists['e'].any!(m => connection.matchesMask(m)))
+		{
+			return false;
+		}
+
+		return true;
+	}
 }

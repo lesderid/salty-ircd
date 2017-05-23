@@ -397,9 +397,14 @@ class Connection
 
 		if(Server.isValidChannelName(target))
 		{
-			if(!_server.canFindChannelByName(target))
+			auto channelRange = _server.findChannelByName(target);
+			if(channelRange.empty)
 			{
 				sendErrNoSuchNick(target);
+			}
+			else if(!channelRange[0].canReceiveMessagesFromUser(this))
+			{
+				send(Message(_server.name, "404", [nick, target, "Cannot send to channel"], true));
 			}
 			else
 			{
