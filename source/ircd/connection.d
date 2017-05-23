@@ -331,16 +331,39 @@ class Connection
 		}
 
 		auto channelList = message.parameters[0].split(',');
-		foreach(channel; channelList)
+		foreach(channelName; channelList)
 		{
 			//TODO: Check if the user isn't already on the channel
-			if(!Server.isValidChannelName(channel))
+			if(!Server.isValidChannelName(channelName))
 			{
-				sendErrNoSuchChannel(channel);
+				sendErrNoSuchChannel(channelName);
 			}
 			else
 			{
-				_server.join(this, channel);
+				auto channelRange = _server.findChannelByName(channelName);
+				if(channelRange.empty)
+				{
+					_server.join(this, channelName);
+				}
+				else
+				{
+					auto channel = channelRange[0];
+					if(channel.maskLists['b'].any!(m => matchesMask(m)))
+					{
+						send(Message(_server.name, "474", [nick, channelName, "Cannot join channel (+b)"], true));
+					}
+					//TODO: Also account for invites from the INVITE command
+					else if(channel.modes.canFind('i') && !channel.maskLists['I'].any!(m => matchesMask(m)))
+					{
+						send(Message(_server.name, "473", [nick, channelName, "Cannot join channel (+i)"], true));
+					}
+					//TODO: Implement channel limit
+					//TODO: Implement channel key
+					else
+					{
+						_server.join(this, channelName);
+					}
+				}
 			}
 		}
 	}
