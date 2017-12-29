@@ -6,10 +6,13 @@
 		"gen-package-version": "1.0.5",
 		"libasync": "0.8.3",
 		"libevent": "2.0.2+2.0.16",
+		"libinputvisitor": "1.2.2",
 		"memutils": "0.4.9",
 		"openssl": "1.1.5+1.0.1g",
 		"scriptlike": "0.9.7",
+		"sdlang-d": "0.10.1",
 		"taggedalgebraic": "0.10.5",
+		"unit-threaded": "0.6.36",
 		"vibe-d": "0.7.31"
 	}
 }

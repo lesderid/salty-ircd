@@ -1,0 +1,10 @@
+listen {
+	type "plaintext"
+	address "::"
+	port 6667
+}
+
+# No password set
+pass "";
+
+# vim:ft=

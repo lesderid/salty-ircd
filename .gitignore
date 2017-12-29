@@ -7,3 +7,4 @@ __test__*__
 /salty-ircd
 source/ircd/packageVersion.d
 motd
+config.sdl

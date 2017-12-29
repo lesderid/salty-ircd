@@ -35,6 +35,8 @@ class Server
 	private uint[string] _commandUsage;
 	private ulong[string] _commandBytes;
 
+	private string _pass = null;
+
 	private SysTime _startTime;
 
 	this()
@@ -439,6 +441,16 @@ class Server
 
 		auto uptimeString = format!"Server Up %d days %d:%02d:%02d"(uptime.days, uptime.hours, uptime.minutes, uptime.seconds);
 		connection.send(Message(name, "242", [connection.nick, uptimeString], true));
+	}
+
+	void setPass(string pass)
+	{
+		_pass = pass;
+	}
+
+	bool isPassCorrect(string pass)
+	{
+		return pass == _pass;
 	}
 
 	void listen(ushort port = 6667)

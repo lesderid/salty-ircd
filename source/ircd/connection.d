@@ -34,10 +34,12 @@ class Connection
 
 	bool connected;
 
+	string pass = null;
+
 	@property auto channels() { return _server.channels.filter!(c => c.members.canFind(this)); }
 
 	@property string prefix() { return nick ~ "!" ~ user ~ "@" ~ hostname; }
-	@property bool registered() { return nick !is null && user !is null; }
+	@property bool registered() { return nick !is null && user !is null && _server.isPassCorrect(pass); }
 	@property bool isOperator() { return modes.canFind('o') || modes.canFind('O'); }
 	@property string servername() { return _server.name; } //TODO: Support server linking
 
@@ -145,7 +147,7 @@ class Connection
 
 			writeln("C> " ~ message.toString);
 
-			if(!registered && !["NICK", "USER", "PING", "PONG", "QUIT"].canFind(message.command))
+			if(!registered && !["NICK", "USER", "PASS", "PING", "PONG", "QUIT"].canFind(message.command))
 			{
 				sendErrNotRegistered();
 				continue;
@@ -158,6 +160,9 @@ class Connection
 					break;
 				case "USER":
 					onUser(message);
+					break;
+				case "PASS":
+					onPass(message);
 					break;
 				case "PING":
 					//TODO: Connection timeout when we don't get a PONG
@@ -304,6 +309,31 @@ class Connection
 		if(!wasRegistered && registered)
 		{
 			sendWelcome();
+		}
+	}
+
+	void onPass(Message message)
+	{
+		//TODO: Make sure PASS is sent before the NICK/USER combination
+
+		if(message.parameters.length < 1)
+		{
+			sendErrNeedMoreParams(message.command);
+			return;
+		}
+
+		if(registered)
+		{
+			send(Message(_server.name, "462", [nick, "Unauthorized command (already registered)"], true));
+			return;
+		}
+
+		pass = message.parameters[0];
+
+		if(!_server.isPassCorrect(pass))
+		{
+			//NOTE: The RFCs don't allow ERR_PASSWDMISMATCH as a response to PASS
+			//TODO: If RFC-strictness is off, do send ERR_PASSWDMISMATCH
 		}
 	}
 
