@@ -1,18 +1,14 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"diet-ng": "1.2.0",
-		"eventcore": "0.8.8",
-		"gen-package-version": "1.0.5",
-		"libasync": "0.8.3",
-		"libevent": "2.0.2+2.0.16",
-		"libinputvisitor": "1.2.2",
-		"memutils": "0.4.9",
-		"openssl": "1.1.5+1.0.1g",
-		"scriptlike": "0.9.7",
-		"sdlang-d": "0.10.1",
-		"taggedalgebraic": "0.10.5",
-		"unit-threaded": "0.6.36",
-		"vibe-d": "0.7.31"
+		"eventcore": "0.8.48",
+		"libasync": "0.8.5",
+		"memutils": "1.0.4",
+		"sdlang-d": "0.10.5",
+		"stdx-allocator": "2.77.5",
+		"taggedalgebraic": "0.11.8",
+		"unit-threaded": "0.7.55",
+		"vibe-core": "1.8.1",
+		"vibe-d": "0.9.0-alpha.1"
 	}
 }

@@ -10,6 +10,7 @@ import std.datetime;
 import std.string;
 
 import vibe.core.core;
+import vibe.core.net;
 
 import ircd.packageVersion;
 
@@ -22,7 +23,6 @@ class Server
 {
     Connection[] connections;
 
-    enum creationDate = packageTimestampISO.until('T').text; //TODO: Also show time when RFC-strictness is off
     enum versionString = "salty-ircd-" ~ packageVersion;
 
     string name;

@@ -10,7 +10,8 @@ import std.utf;
 import std.datetime;
 
 import vibe.core.core;
-import vibe.stream.operations;
+import vibe.core.net;
+import vibe.stream.operations : readLine;
 
 import ircd.message;
 import ircd.server;
@@ -1278,9 +1279,8 @@ Lforeach:
     void sendWelcome()
     {
         send(Message(_server.name, "001", [nick, "Welcome to the Internet Relay Network " ~ prefix], true));
-        send(Message(_server.name, "002", [nick, "Your host is " ~ _server.name ~ ", running version " ~ _server.versionString], true));
-        send(Message(_server.name, "003", [nick, "This server was created " ~ _server.creationDate], true));
-        send(Message(_server.name, "004", [nick, _server.name, _server.versionString, "w", "snt"]));
+
+        //TODO: If RFC-strictness is off, also send 002, 003, and 004
     }
 
     string getHost()
