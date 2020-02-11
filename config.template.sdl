@@ -1,7 +1,7 @@
 listen {
-	type "plaintext"
-	address "::"
-	port 6667
+    type "plaintext"
+    address "::"
+    port 6667
 }
 
 # No password set
