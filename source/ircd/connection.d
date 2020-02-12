@@ -1285,11 +1285,13 @@ Lforeach:
 
     string getHost()
     {
-        auto address = parseAddress(_connection.peerAddress);
+        auto address = parseAddress(_connection.remoteAddress.toAddressString);
         auto hostname = address.toHostNameString;
         if(hostname is null)
         {
             hostname = address.toAddrString;
+
+            //TODO: Enclose IPv6 addresses in square brackets?
         }
         return hostname;
     }
