@@ -395,6 +395,15 @@ class Connection
             return;
         }
 
+        if (message.parameters[0] == "0")
+        {
+            foreach (channel; channels)
+            {
+                channel.part(this, null);
+            }
+            return;
+        }
+
         auto channelList = message.parameters[0].split(',');
         auto channelKeys = message.parameters.length > 1 ? message.parameters[1].split(',') : null;
         foreach (i, channelName; channelList)
