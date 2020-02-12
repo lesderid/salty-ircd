@@ -19,6 +19,7 @@ import ircd.connection;
 import ircd.channel;
 import ircd.helpers;
 
+//TODO: Make this a struct?
 class Server
 {
     Connection[] connections;
@@ -53,7 +54,8 @@ class Server
     private void readMotd()
     {
         import std.file : exists, readText;
-        if(exists("motd"))
+
+        if (exists("motd"))
         {
             motd = readText("motd");
         }
@@ -61,9 +63,9 @@ class Server
 
     private void pingLoop()
     {
-        while(true)
+        while (true)
         {
-            foreach(connection; connections)
+            foreach (connection; connections)
             {
                 connection.send(Message(null, "PING", [name], true));
             }
@@ -88,14 +90,14 @@ class Server
     {
         import std.ascii : digits, letters;
 
-        if(name.length > 9)
+        if (name.length > 9)
         {
             return false;
         }
-        foreach(i, c; name)
+        foreach (i, c; name)
         {
             auto allowed = letters ~ "[]\\`_^{|}";
-            if(i > 0)
+            if (i > 0)
             {
                 allowed ~= digits ~ "-";
             }
@@ -145,7 +147,7 @@ class Server
     {
         auto channelRange = findChannelByName(channelName);
         Channel channel;
-        if(channelRange.empty)
+        if (channelRange.empty)
         {
             channel = new Channel(channelName, this);
             channels ~= channel;
@@ -156,14 +158,14 @@ class Server
         }
         channel.join(connection);
 
-        foreach(member; channel.members)
+        foreach (member; channel.members)
         {
             member.send(Message(connection.prefix, "JOIN", [channelName]));
         }
 
         channel.sendNames(connection);
 
-        if(!channel.topic.empty)
+        if (!channel.topic.empty)
         {
             channel.sendTopic(connection);
         }
@@ -171,11 +173,12 @@ class Server
 
     void part(Connection connection, string channelName, string partMessage)
     {
-        auto channel = connection.channels.array.find!(c => c.name.toIRCLower == channelName.toIRCLower)[0];
+        auto channel = connection.channels.array.find!(
+                c => c.name.toIRCLower == channelName.toIRCLower)[0];
 
         channel.part(connection, partMessage);
 
-        if(channel.members.empty)
+        if (channel.members.empty)
         {
             channels = channels.remove!(c => c == channel);
         }
@@ -184,20 +187,20 @@ class Server
     void quit(Connection connection, string quitMessage)
     {
         Connection[] peers;
-        foreach(channel; connection.channels)
+        foreach (channel; connection.channels)
         {
             peers ~= channel.members;
             channel.members = channel.members.remove!(m => m == connection);
-            if(channel.members.empty)
+            if (channel.members.empty)
             {
                 channels = channels.remove!(c => c == channel);
             }
         }
         peers = peers.sort().uniq.filter!(c => c != connection).array;
 
-        foreach(peer; peers)
+        foreach (peer; peers)
         {
-            if(quitMessage !is null)
+            if (quitMessage !is null)
             {
                 peer.send(Message(connection.prefix, "QUIT", [quitMessage], true));
             }
@@ -213,8 +216,9 @@ class Server
         //TODO: Check what RFCs say about secret/private channels
 
         auto channel = findChannelByName(channelName)[0];
-        foreach(c; channel.members.filter!(c => !operatorsOnly || c.isOperator)
-                                  .filter!(c => c.visibleTo(origin)))
+        foreach (c; channel.members
+                .filter!(c => !operatorsOnly || c.isOperator)
+                .filter!(c => c.visibleTo(origin)))
         {
             //TODO: Support hop count
             origin.sendWhoReply(channelName, c, channel.nickPrefix(c), 0);
@@ -223,9 +227,10 @@ class Server
 
     void whoGlobal(Connection origin, string mask, bool operatorsOnly)
     {
-        foreach(c; connections.filter!(c => c.visibleTo(origin))
-                              .filter!(c => !operatorsOnly || c.isOperator)
-                              .filter!(c => [c.hostname, c.servername, c.realname, c.nick].any!(n => wildcardMatch(n, mask))))
+        foreach (c; connections.filter!(c => c.visibleTo(origin))
+                .filter!(c => !operatorsOnly || c.isOperator)
+                .filter!(c => [c.hostname, c.servername, c.realname,
+                        c.nick].any!(n => wildcardMatch(n, mask))))
         {
             //TODO: Don't leak secret/private channels if RFC-strictness is off (the RFCs don't seem to say anything about it?)
             auto channelName = c.channels.empty ? "*" : c.channels.array[0].name;
@@ -279,15 +284,20 @@ class Server
 
     void sendGlobalNames(Connection connection)
     {
-        foreach(channel; channels.filter!(c => c.visibleTo(connection)))
+        foreach (channel; channels.filter!(c => c.visibleTo(connection)))
         {
             channel.sendNames(connection, false);
         }
 
-        auto otherUsers = connections.filter!(c => !c.modes.canFind('i') && c.channels.filter!(ch => !ch.modes.canFind('s') && !ch.modes.canFind('p')).empty);
-        if(!otherUsers.empty)
+        auto otherUsers = connections.filter!(c => !c.modes.canFind('i')
+                && c.channels.filter!(ch => !ch.modes.canFind('s')
+                    && !ch.modes.canFind('p')).empty);
+        if (!otherUsers.empty)
         {
-            connection.send(Message(name, "353", [connection.nick, "=", "*", otherUsers.map!(m => m.nick).join(' ')], true));
+            connection.send(Message(name, "353", [
+                        connection.nick, "=", "*",
+                        otherUsers.map!(m => m.nick).join(' ')
+                    ], true));
         }
 
         connection.sendRplEndOfNames("*");
@@ -295,25 +305,32 @@ class Server
 
     void sendFullList(Connection connection)
     {
-        foreach(channel; channels.filter!(c => c.visibleTo(connection)))
+        foreach (channel; channels.filter!(c => c.visibleTo(connection)))
         {
-            connection.sendRplList(channel.name, channel.members.filter!(m => m.visibleTo(connection)).array.length, channel.topic);
+            connection.sendRplList(channel.name,
+                    channel.members.filter!(m => m.visibleTo(connection))
+                    .array.length, channel.topic);
         }
         connection.sendRplListEnd();
     }
 
     void sendPartialList(Connection connection, string[] channelNames)
     {
-        foreach(channel; channels.filter!(c => channelNames.canFind(c.name) && c.visibleTo(connection)))
+        foreach (channel; channels.filter!(c => channelNames.canFind(c.name)
+                && c.visibleTo(connection)))
         {
-            connection.sendRplList(channel.name, channel.members.filter!(m => m.visibleTo(connection)).array.length, channel.topic);
+            connection.sendRplList(channel.name,
+                    channel.members.filter!(m => m.visibleTo(connection))
+                    .array.length, channel.topic);
         }
         connection.sendRplListEnd();
     }
 
     void sendVersion(Connection connection)
     {
-        connection.send(Message(name, "351", [connection.nick, versionString ~ ".", name, ""], true));
+        connection.send(Message(name, "351", [
+                    connection.nick, versionString ~ ".", name, ""
+                ], true));
     }
 
     void sendTime(Connection connection)
@@ -334,13 +351,17 @@ class Server
 
     void sendMotd(Connection connection)
     {
-        connection.send(Message(name, "375", [connection.nick, ":- " ~ name ~ " Message of the day - "], true));
-        foreach(line; motd.splitLines)
+        connection.send(Message(name, "375", [
+                    connection.nick, ":- " ~ name ~ " Message of the day - "
+                ], true));
+        foreach (line; motd.splitLines)
         {
             //TODO: Implement line wrapping
             connection.send(Message(name, "372", [connection.nick, ":- " ~ line], true));
         }
-        connection.send(Message(name, "376", [connection.nick, "End of MOTD command"], true));
+        connection.send(Message(name, "376", [
+                    connection.nick, "End of MOTD command"
+                ], true));
     }
 
     void sendLusers(Connection connection)
@@ -348,24 +369,43 @@ class Server
         //TODO: If RFC-strictness is off, use '1 server' instead of '1 servers' if the network (or the part of the network of the query) has only one server
 
         //TODO: Support services and multiple servers
-        connection.send(Message(name, "251", [connection.nick, "There are " ~ connections.filter!(c => c.registered).count.to!string ~ " users and 0 services on 1 servers"], true));
+        connection.send(Message(name, "251", [
+                    connection.nick,
+                    "There are " ~ connections.filter!(c => c.registered)
+                    .count
+                    .to!string ~ " users and 0 services on 1 servers"
+                ], true));
 
-        if(connections.any!(c => c.isOperator))
+        if (connections.any!(c => c.isOperator))
         {
-            connection.send(Message(name, "252", [connection.nick, connections.count!(c => c.isOperator).to!string, "operator(s) online"], true));
+            connection.send(Message(name, "252", [
+                        connection.nick,
+                        connections.count!(c => c.isOperator)
+                        .to!string, "operator(s) online"
+                    ], true));
         }
 
-        if(connections.any!(c => !c.registered))
+        if (connections.any!(c => !c.registered))
         {
-            connection.send(Message(name, "253", [connection.nick, connections.count!(c => !c.registered).to!string, "unknown connection(s)"], true));
+            connection.send(Message(name, "253", [
+                        connection.nick,
+                        connections.count!(c => !c.registered)
+                        .to!string, "unknown connection(s)"
+                    ], true));
         }
 
-        if(channels.length > 0)
+        if (channels.length > 0)
         {
-            connection.send(Message(name, "254", [connection.nick, channels.length.to!string, "channels formed"], true));
+            connection.send(Message(name, "254", [
+                        connection.nick, channels.length.to!string,
+                        "channels formed"
+                    ], true));
         }
 
-        connection.send(Message(name, "255", [connection.nick, "I have " ~ connections.length.to!string ~ " clients and 1 servers"], true));
+        connection.send(Message(name, "255", [
+                    connection.nick,
+                    "I have " ~ connections.length.to!string ~ " clients and 1 servers"
+                ], true));
     }
 
     void ison(Connection connection, string[] nicks)
@@ -379,17 +419,29 @@ class Server
     {
         auto user = findConnectionByNick(mask)[0];
 
-        connection.send(Message(name, "311", [connection.nick, user.nick, user.user, user.hostname, "*", user.hostname], true));
+        connection.send(Message(name, "311", [
+                    connection.nick, user.nick, user.user, user.hostname, "*",
+                    user.hostname
+                ], true));
         //TODO: Send information about the user's actual server (which is not necessarily this one)
-        connection.send(Message(name, "312", [connection.nick, user.nick, name, info], true));
-        if(user.isOperator)
+        connection.send(Message(name, "312", [
+                    connection.nick, user.nick, name, info
+                ], true));
+        if (user.isOperator)
         {
-            connection.send(Message(name, "313", [connection.nick, user.nick, "is an IRC operator"], true));
+            connection.send(Message(name, "313", [
+                        connection.nick, user.nick, "is an IRC operator"
+                    ], true));
         }
         auto idleSeconds = (Clock.currTime - user.lastMessageTime).total!"seconds";
-        connection.send(Message(name, "317", [connection.nick, user.nick, idleSeconds.to!string, "seconds idle"], true));
+        connection.send(Message(name, "317", [
+                    connection.nick, user.nick, idleSeconds.to!string,
+                    "seconds idle"
+                ], true));
         auto userChannels = user.channels.map!(c => c.nickPrefix(user) ~ c.name).join(' ');
-        connection.send(Message(name, "319", [connection.nick, user.nick, userChannels], true));
+        connection.send(Message(name, "319", [
+                    connection.nick, user.nick, userChannels
+                ], true));
     }
 
     void kill(Connection killer, string nick, string comment)
@@ -400,7 +452,8 @@ class Server
 
         quit(user, "Killed by " ~ killer.nick ~ " (" ~ comment ~ ")");
 
-        user.send(Message(null, "ERROR", ["Closing Link: Killed by " ~ killer.nick ~ " (" ~ comment ~ ")"], true));
+        user.send(Message(null, "ERROR",
+                ["Closing Link: Killed by " ~ killer.nick ~ " (" ~ comment ~ ")"], true));
         user.closeConnection();
     }
 
@@ -415,7 +468,7 @@ class Server
     void updateCommandStatistics(Message message)
     {
         auto command = message.command.toUpper;
-        if(command !in _commandUsage)
+        if (command !in _commandUsage)
         {
             _commandUsage[command] = 0;
             _commandBytes[command] = 0;
@@ -426,10 +479,13 @@ class Server
 
     void sendCommandUsage(Connection connection)
     {
-        foreach(command, count; _commandUsage)
+        foreach (command, count; _commandUsage)
         {
             //TODO: Implement remote count
-            connection.send(Message(name, "212", [connection.nick, command, count.to!string, _commandBytes[command].to!string, "0"], false));
+            connection.send(Message(name, "212", [
+                        connection.nick, command, count.to!string,
+                        _commandBytes[command].to!string, "0"
+                    ], false));
         }
     }
 
@@ -439,7 +495,8 @@ class Server
 
         auto uptime = (Clock.currTime - _startTime).split!("days", "hours", "minutes", "seconds");
 
-        auto uptimeString = format!"Server Up %d days %d:%02d:%02d"(uptime.days, uptime.hours, uptime.minutes, uptime.seconds);
+        auto uptimeString = format!"Server Up %d days %d:%02d:%02d"(uptime.days,
+                uptime.hours, uptime.minutes, uptime.seconds);
         connection.send(Message(name, "242", [connection.nick, uptimeString], true));
     }
 

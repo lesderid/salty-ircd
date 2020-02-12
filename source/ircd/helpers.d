@@ -6,8 +6,7 @@ import std.algorithm : map;
 //Based on std.path.globMatch (https://github.com/dlang/phobos/blob/v2.073.2/std/path.d#L3164)
 //License: Boost License 1.0 (http://www.boost.org/LICENSE_1_0.txt)
 //Copyright (c) Lars T. Kyllingstad, Walter Bright
-@safe pure
-bool wildcardMatch(string input, string pattern)
+@safe pure bool wildcardMatch(string input, string pattern)
 {
     foreach (ref pi; 0 .. pattern.length)
     {
@@ -47,11 +46,11 @@ bool wildcardMatch(string input, string pattern)
     return input.empty;
 }
 
-@safe pure
-dchar toIRCLower(dchar input)
+@safe pure dchar toIRCLower(dchar input)
 {
     import std.uni : toLower;
-    switch(input)
+
+    switch (input)
     {
         case '[':
             return '{';
@@ -64,9 +63,9 @@ dchar toIRCLower(dchar input)
     }
 }
 
-@safe pure
-string toIRCLower(string input)
+@safe pure string toIRCLower(string input)
 {
     import std.utf : byChar;
+
     return input.map!toIRCLower.byChar.array.idup;
 }

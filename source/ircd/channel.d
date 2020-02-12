@@ -9,6 +9,7 @@ import ircd.server;
 import ircd.message;
 import ircd.helpers;
 
+//TODO: Make this a struct?
 class Channel
 {
     string name;
@@ -29,14 +30,14 @@ class Channel
     {
         this.name = name;
         this._server = server;
-        this.maskLists = ['b' : [], 'e' : [], 'I' : []];
+        this.maskLists = ['b': [], 'e': [], 'I': []];
     }
 
     void join(Connection connection)
     {
         members ~= connection;
 
-        if(members.length == 1)
+        if (members.length == 1)
         {
             memberModes[connection] ~= 'o';
         }
@@ -45,7 +46,7 @@ class Channel
             memberModes[connection] = [];
         }
 
-        if(inviteHolders.canFind(connection))
+        if (inviteHolders.canFind(connection))
         {
             inviteHolders = inviteHolders.remove!(c => c == connection);
         }
@@ -53,11 +54,13 @@ class Channel
 
     void part(Connection connection, string partMessage)
     {
-        foreach(member; members)
+        foreach (member; members)
         {
-            if(partMessage !is null)
+            if (partMessage !is null)
             {
-                member.send(Message(connection.prefix, "PART", [name, partMessage], true));
+                member.send(Message(connection.prefix, "PART", [
+                            name, partMessage
+                        ], true));
             }
             else
             {
@@ -78,11 +81,11 @@ class Channel
     {
         string channelType;
 
-        if(modes.canFind('s'))
+        if (modes.canFind('s'))
         {
             channelType = "@";
         }
-        else if(modes.canFind('p'))
+        else if (modes.canFind('p'))
         {
             channelType = "*";
         }
@@ -93,9 +96,14 @@ class Channel
 
         auto onChannel = members.canFind(connection);
 
-        connection.send(Message(_server.name, "353", [connection.nick, channelType, name, members.filter!(m => onChannel || !m.modes.canFind('i')).map!(m => prefixedNick(m)).join(' ')], true));
+        connection.send(Message(_server.name, "353", [
+                    connection.nick, channelType, name,
+                    members.filter!(m => onChannel || !m.modes.canFind('i'))
+                    .map!(m => prefixedNick(m))
+                    .join(' ')
+                ], true));
 
-        if(sendRplEndOfNames)
+        if (sendRplEndOfNames)
         {
             connection.sendRplEndOfNames(name);
         }
@@ -103,7 +111,7 @@ class Channel
 
     void sendPrivMsg(Connection sender, string text)
     {
-        foreach(member; members.filter!(m => m.nick != sender.nick))
+        foreach (member; members.filter!(m => m.nick != sender.nick))
         {
             member.send(Message(sender.prefix, "PRIVMSG", [name, text], true));
         }
@@ -111,7 +119,7 @@ class Channel
 
     void sendNotice(Connection sender, string text)
     {
-        foreach(member; members.filter!(m => m.nick != sender.nick))
+        foreach (member; members.filter!(m => m.nick != sender.nick))
         {
             member.send(Message(sender.prefix, "NOTICE", [name, text], true));
         }
@@ -119,13 +127,17 @@ class Channel
 
     void sendTopic(Connection connection)
     {
-        if(topic.empty)
+        if (topic.empty)
         {
-            connection.send(Message(_server.name, "331", [connection.nick, name, "No topic is set"]));
+            connection.send(Message(_server.name, "331", [
+                        connection.nick, name, "No topic is set"
+                    ]));
         }
         else
         {
-            connection.send(Message(_server.name, "332", [connection.nick, name, topic], true));
+            connection.send(Message(_server.name, "332", [
+                        connection.nick, name, topic
+                    ], true));
         }
     }
 
@@ -133,7 +145,7 @@ class Channel
     {
         topic = newTopic;
 
-        foreach(member; members)
+        foreach (member; members)
         {
             member.send(Message(connection.prefix, "TOPIC", [name, newTopic], true));
         }
@@ -141,9 +153,11 @@ class Channel
 
     void kick(Connection kicker, Connection user, string comment)
     {
-        foreach(member; members)
+        foreach (member; members)
         {
-            member.send(Message(kicker.prefix, "KICK", [name, user.nick, comment], true));
+            member.send(Message(kicker.prefix, "KICK", [
+                        name, user.nick, comment
+                    ], true));
         }
 
         members = members.remove!(m => m == user);
@@ -155,13 +169,13 @@ class Channel
         auto specialModes = "";
         string[] specialModeParameters;
 
-        if(members.canFind(user) && key !is null)
+        if (members.canFind(user) && key !is null)
         {
             specialModes ~= "k";
             specialModeParameters ~= key;
         }
 
-        if(members.canFind(user) && !userLimit.isNull)
+        if (members.canFind(user) && !userLimit.isNull)
         {
             import std.conv : to;
 
@@ -169,12 +183,14 @@ class Channel
             specialModeParameters ~= userLimit.to!string;
         }
 
-        user.send(Message(_server.name, "324", [user.nick, name, "+" ~ modes.idup ~ specialModes] ~ specialModeParameters));
+        user.send(Message(_server.name, "324", [
+                    user.nick, name, "+" ~ modes.idup ~ specialModes
+                ] ~ specialModeParameters));
     }
 
     bool setMemberMode(Connection target, char mode)
     {
-        if(memberModes[target].canFind(mode))
+        if (memberModes[target].canFind(mode))
         {
             return false;
         }
@@ -185,7 +201,7 @@ class Channel
 
     bool unsetMemberMode(Connection target, char mode)
     {
-        if(!memberModes[target].canFind(mode))
+        if (!memberModes[target].canFind(mode))
         {
             return false;
         }
@@ -193,6 +209,7 @@ class Channel
         //NOTE: byCodeUnit is necessary due to auto-decoding (https://wiki.dlang.org/Language_issues#Unicode_and_ranges)
         import std.utf : byCodeUnit;
         import std.range : array;
+
         memberModes[target] = memberModes[target].byCodeUnit.remove!(m => m == mode).array;
 
         return true;
@@ -200,7 +217,7 @@ class Channel
 
     bool setMode(char mode)
     {
-        if(modes.canFind(mode))
+        if (modes.canFind(mode))
         {
             return false;
         }
@@ -214,7 +231,7 @@ class Channel
 
     bool unsetMode(char mode)
     {
-        if(!modes.canFind(mode))
+        if (!modes.canFind(mode))
         {
             return false;
         }
@@ -222,6 +239,7 @@ class Channel
         //NOTE: byCodeUnit is necessary due to auto-decoding (https://wiki.dlang.org/Language_issues#Unicode_and_ranges)
         import std.utf : byCodeUnit;
         import std.range : array;
+
         modes = modes.byCodeUnit.remove!(m => m == mode).array;
 
         return true;
@@ -229,7 +247,7 @@ class Channel
 
     bool addMaskListEntry(string mask, char mode)
     {
-        if(maskLists[mode].canFind!(m => m.toIRCLower == mask.toIRCLower))
+        if (maskLists[mode].canFind!(m => m.toIRCLower == mask.toIRCLower))
         {
             return false;
         }
@@ -241,7 +259,7 @@ class Channel
 
     bool removeMaskListEntry(string mask, char mode)
     {
-        if(!maskLists[mode].canFind!(m => m.toIRCLower == mask.toIRCLower))
+        if (!maskLists[mode].canFind!(m => m.toIRCLower == mask.toIRCLower))
         {
             return false;
         }
@@ -253,32 +271,44 @@ class Channel
 
     void sendBanList(Connection connection)
     {
-        foreach(entry; maskLists['b'])
+        foreach (entry; maskLists['b'])
         {
-            connection.send(Message(_server.name, "367", [connection.nick, name, entry], false));
+            connection.send(Message(_server.name, "367", [
+                        connection.nick, name, entry
+                    ], false));
         }
 
-        connection.send(Message(_server.name, "368", [connection.nick, name, "End of channel ban list"], true));
+        connection.send(Message(_server.name, "368", [
+                    connection.nick, name, "End of channel ban list"
+                ], true));
     }
 
     void sendExceptList(Connection connection)
     {
-        foreach(entry; maskLists['e'])
+        foreach (entry; maskLists['e'])
         {
-            connection.send(Message(_server.name, "348", [connection.nick, name, entry], false));
+            connection.send(Message(_server.name, "348", [
+                        connection.nick, name, entry
+                    ], false));
         }
 
-        connection.send(Message(_server.name, "349", [connection.nick, name, "End of channel exception list"], true));
+        connection.send(Message(_server.name, "349", [
+                    connection.nick, name, "End of channel exception list"
+                ], true));
     }
 
     void sendInviteList(Connection connection)
     {
-        foreach(entry; maskLists['I'])
+        foreach (entry; maskLists['I'])
         {
-            connection.send(Message(_server.name, "346", [connection.nick, name, entry], false));
+            connection.send(Message(_server.name, "346", [
+                        connection.nick, name, entry
+                    ], false));
         }
 
-        connection.send(Message(_server.name, "347", [connection.nick, name, "End of channel invite list"], true));
+        connection.send(Message(_server.name, "347", [
+                    connection.nick, name, "End of channel invite list"
+                ], true));
     }
 
     bool setKey(string key)
@@ -290,7 +320,7 @@ class Channel
 
     bool unsetKey(string key)
     {
-        if(this.key != key)
+        if (this.key != key)
         {
             return false;
         }
@@ -307,7 +337,7 @@ class Channel
 
     bool unsetUserLimit()
     {
-        if(userLimit.isNull)
+        if (userLimit.isNull)
         {
             return false;
         }
@@ -319,11 +349,11 @@ class Channel
 
     string nickPrefix(Connection member)
     {
-        if(memberModes[member].canFind('o'))
+        if (memberModes[member].canFind('o'))
         {
             return "@";
         }
-        else if(memberModes[member].canFind('v'))
+        else if (memberModes[member].canFind('v'))
         {
             return "+";
         }
@@ -331,7 +361,10 @@ class Channel
         return "";
     }
 
-    string prefixedNick(Connection member) { return nickPrefix(member) ~ member.nick; }
+    string prefixedNick(Connection member)
+    {
+        return nickPrefix(member) ~ member.nick;
+    }
 
     bool visibleTo(Connection connection)
     {
@@ -340,15 +373,16 @@ class Channel
 
     bool canReceiveMessagesFromUser(Connection connection)
     {
-        if(modes.canFind('n') && !members.canFind(connection))
+        if (modes.canFind('n') && !members.canFind(connection))
         {
             return false;
         }
-        else if(modes.canFind('m') && nickPrefix(connection).empty)
+        else if (modes.canFind('m') && nickPrefix(connection).empty)
         {
             return false;
         }
-        else if(maskLists['b'].any!(m => connection.matchesMask(m)) && !maskLists['e'].any!(m => connection.matchesMask(m)))
+        else if (maskLists['b'].any!(m => connection.matchesMask(m))
+                && !maskLists['e'].any!(m => connection.matchesMask(m)))
         {
             return false;
         }

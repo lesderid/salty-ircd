@@ -6,7 +6,6 @@ import std.array;
 import std.algorithm;
 import std.conv;
 
-//TODO: Make this a class
 struct Message
 {
     string prefix;
@@ -20,7 +19,7 @@ struct Message
     static Message fromString(string line)
     {
         string prefix = null;
-        if(line.startsWith(':'))
+        if (line.startsWith(':'))
         {
             line = line[1 .. $];
             prefix = line[0 .. line.indexOf(' ')];
@@ -28,7 +27,7 @@ struct Message
         }
 
         //stop early when no space character can be found (message without parameters)
-        if(!line.canFind(' '))
+        if (!line.canFind(' '))
         {
             return Message(prefix, line, [], false);
         }
@@ -38,15 +37,15 @@ struct Message
         auto bytes = line.length;
         string[] params = [];
         bool prefixedParam;
-        while(true)
+        while (true)
         {
-            if(line.startsWith(':'))
+            if (line.startsWith(':'))
             {
                 params ~= line[1 .. $];
                 prefixedParam = true;
                 break;
             }
-            else if(line.canFind(' '))
+            else if (line.canFind(' '))
             {
                 auto param = line[0 .. line.indexOf(' ')];
                 line = line[param.length + 1 .. $];
@@ -65,29 +64,28 @@ struct Message
     string toString()
     {
         auto message = "";
-        if(prefix != null)
+        if (prefix != null)
         {
             message = ":" ~ prefix ~ " ";
         }
 
-        if(parameters.length == 0)
+        if (parameters.length == 0)
         {
             return message ~ command;
         }
 
         message ~= command ~ " ";
-        if(parameters.length > 1)
+        if (parameters.length > 1)
         {
-            message ~= parameters[0 .. $-1].join(' ') ~ " ";
+            message ~= parameters[0 .. $ - 1].join(' ') ~ " ";
         }
 
-        if(parameters[$-1].canFind(' ') || prefixedParameter)
+        if (parameters[$ - 1].canFind(' ') || prefixedParameter)
         {
             message ~= ":";
         }
-        message ~= parameters[$-1];
+        message ~= parameters[$ - 1];
 
         return message;
     }
 }
-

@@ -10,7 +10,7 @@ import ircd.server;
 
 static T tagValueOrNull(T)(Tag tag, string childName)
 {
-    if(childName !in tag.tags)
+    if (childName !in tag.tags)
     {
         return null;
     }
@@ -22,7 +22,7 @@ static T tagValueOrNull(T)(Tag tag, string childName)
 
 static T tagValue(T)(Tag tag, string childName)
 {
-    static if(isArray!T && !isSomeString!T)
+    static if (isArray!T && !isSomeString!T)
     {
         template U(T : T[])
         {
@@ -31,16 +31,16 @@ static T tagValue(T)(Tag tag, string childName)
 
         T array = [];
 
-        foreach(value; tag.tags[childName][0].values)
+        foreach (value; tag.tags[childName][0].values)
         {
             array ~= value.get!(U!T);
         }
 
         return array;
     }
-    else static if(isIntegral!T && !is(T == int))
+    else static if (isIntegral!T && !is(T == int))
     {
-        return cast(T)tagValue!int(tag, childName);
+        return cast(T) tagValue!int(tag, childName);
     }
     else
     {
@@ -57,17 +57,16 @@ shared static this()
     auto pass = config.tagValue!string("pass");
     server.setPass(pass.empty ? null : pass);
 
-    foreach(listenBlock; config.tags.filter!(t => t.getFullName.toString == "listen"))
+    foreach (listenBlock; config.tags.filter!(t => t.getFullName.toString == "listen"))
     {
         assert(listenBlock.tagValue!string("type") == "plaintext");
 
         auto addresses = listenBlock.tagValue!(string[])("address");
         auto port = listenBlock.tagValue!ushort("port");
 
-        foreach(address; addresses)
+        foreach (address; addresses)
         {
             server.listen(port, address);
         }
     }
 }
-
