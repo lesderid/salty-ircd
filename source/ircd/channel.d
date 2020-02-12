@@ -21,7 +21,7 @@ class Channel
     string[][char] maskLists;
 
     string key;
-    Nullable!uint userLimit;
+    Nullable!uint memberLimit;
     Connection[] inviteHolders;
 
     private Server _server;
@@ -175,12 +175,12 @@ class Channel
             specialModeParameters ~= key;
         }
 
-        if (members.canFind(user) && !userLimit.isNull)
+        if (members.canFind(user) && !memberLimit.isNull)
         {
             import std.conv : to;
 
             specialModes ~= "l";
-            specialModeParameters ~= userLimit.to!string;
+            specialModeParameters ~= memberLimit.to!string;
         }
 
         user.send(Message(_server.name, "324", [
@@ -330,19 +330,19 @@ class Channel
         return true;
     }
 
-    void setUserLimit(uint userLimit)
+    void setMemberLimit(uint memberLimit)
     {
-        this.userLimit = userLimit;
+        this.memberLimit = memberLimit;
     }
 
-    bool unsetUserLimit()
+    bool unsetMemberLimit()
     {
-        if (userLimit.isNull)
+        if (memberLimit.isNull)
         {
             return false;
         }
 
-        userLimit.nullify();
+        memberLimit.nullify();
 
         return true;
     }

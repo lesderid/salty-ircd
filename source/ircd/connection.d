@@ -286,7 +286,7 @@ class Connection
         if (!_server.isNickAvailable(newNick) && newNick.toIRCLower != nick.toIRCLower)
         {
             send(Message(_server.name, "433", [
-                        nick, newNick, "Nickname already in use"
+                        nick, newNick, "Nickname is already in use"
                     ]));
             return;
         }
@@ -396,7 +396,8 @@ class Connection
         }
 
         auto channelList = message.parameters[0].split(',');
-        foreach (channelName; channelList)
+        auto channelKeys = message.parameters.length > 1 ? message.parameters[1].split(',') : null;
+        foreach (i, channelName; channelList)
         {
             if (!Server.isValidChannelName(channelName))
             {
@@ -418,14 +419,12 @@ class Connection
                         return;
                     }
 
-                    //TODO: Implement channel limit
-                    //TODO: Implement channel key
-
-                    if (channel.maskLists['b'].any!(m => matchesMask(m)))
+                    if (!channel.memberLimit.isNull
+                            && channel.members.length >= channel.memberLimit.get)
                     {
-                        send(Message(_server.name, "474", [
-                                    nick, channelName, "Cannot join channel (+b)"
-                                ], true));
+                        send(Message(_server.name, "471", [
+                                    nick, channelName, "Cannot join channel (+l)"
+                                ]));
                     }
                     else if (channel.modes.canFind('i')
                             && !(channel.maskLists['I'].any!(m => matchesMask(m))
@@ -433,7 +432,20 @@ class Connection
                     {
                         send(Message(_server.name, "473", [
                                     nick, channelName, "Cannot join channel (+i)"
-                                ], true));
+                                ]));
+                    }
+                    else if (channel.maskLists['b'].any!(m => matchesMask(m)))
+                    {
+                        send(Message(_server.name, "474", [
+                                    nick, channelName, "Cannot join channel (+b)"
+                                ]));
+                    }
+                    else if (channel.key !is null && (channelKeys.length < i + 1
+                            || channelKeys[i] != channel.key))
+                    {
+                        send(Message(_server.name, "475", [
+                                    nick, channelName, "Cannot join channel (+k)"
+                                ]));
                     }
                     else
                     {
@@ -1157,7 +1169,7 @@ class Connection
                                 processedParameters ~= mask;
                             }
                             break;
-                        case 'k': //TODO: Implement channel key
+                        case 'k':
                             if (i + 1 == message.parameters.length)
                             {
                                 //TODO: Figure out what to do when we need more mode parameters
@@ -1176,7 +1188,7 @@ class Connection
                                 processedParameters ~= key;
                             }
                             break;
-                        case 'l': //TODO: Implement user limit
+                        case 'l':
                             if (add)
                             {
                                 if (i + 1 == message.parameters.length)
@@ -1196,14 +1208,14 @@ class Connection
                                     break Lforeach;
                                 }
 
-                                channel.setUserLimit(limit);
+                                channel.setMemberLimit(limit);
 
                                 processedModes ~= mode;
                                 processedParameters ~= limitString;
                             }
                             else
                             {
-                                if (channel.unsetUserLimit())
+                                if (channel.unsetMemberLimit())
                                 {
                                     processedModes ~= mode;
                                 }
@@ -1279,6 +1291,8 @@ class Connection
                     nick, [statsLetter].idup, "End of STATS report"
                 ], true));
     }
+
+    //TODO: Refactor numeric replies
 
     void sendWhoReply(string channel, Connection user, string nickPrefix, uint hopCount)
     {
