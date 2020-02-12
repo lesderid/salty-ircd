@@ -389,4 +389,9 @@ class Channel
 
         return true;
     }
+
+    bool hasMember(Connection connection)
+    {
+        return members.canFind(connection);
+    }
 }

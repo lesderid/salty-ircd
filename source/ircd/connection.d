@@ -398,7 +398,6 @@ class Connection
         auto channelList = message.parameters[0].split(',');
         foreach (channelName; channelList)
         {
-            //TODO: Check if the user isn't already on the channel
             if (!Server.isValidChannelName(channelName))
             {
                 sendErrNoSuchChannel(channelName);
@@ -413,6 +412,15 @@ class Connection
                 else
                 {
                     auto channel = channelRange[0];
+
+                    if (channel.hasMember(this))
+                    {
+                        return;
+                    }
+
+                    //TODO: Implement channel limit
+                    //TODO: Implement channel key
+
                     if (channel.maskLists['b'].any!(m => matchesMask(m)))
                     {
                         send(Message(_server.name, "474", [
@@ -427,9 +435,7 @@ class Connection
                                     nick, channelName, "Cannot join channel (+i)"
                                 ], true));
                     }
-                    //TODO: Implement channel limit
-                    //TODO: Implement channel key
-                else
+                    else
                     {
                         _server.join(this, channelName);
                     }
