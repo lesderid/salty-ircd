@@ -510,6 +510,11 @@ class Server
         return pass == _pass;
     }
 
+    bool hasPass()
+    {
+        return _pass != null;
+    }
+
     void listen(ushort port = 6667)
     {
         listenTCP(port, &acceptConnection);
