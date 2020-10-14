@@ -224,7 +224,13 @@ class Channel
 
         modes ~= mode;
 
-        //TODO: If RFC-strictness is off, clear the invite list when +i is set
+        version (BasicFixes)
+        {
+            if (mode == 'i')
+            {
+                inviteHolders = [];
+            }
+        }
 
         return true;
     }
