@@ -48,9 +48,14 @@ class Connection
         return nick ~ "!" ~ user ~ "@" ~ hostname;
     }
 
+    @property bool registrationAttempted()
+    {
+        return nick !is null && user !is null;
+    }
+
     @property bool registered()
     {
-        return nick !is null && user !is null && _server.isPassCorrect(pass);
+        return registrationAttempted && (!_server.hasPass || _server.isPassCorrect(pass));
     }
 
     @property bool isOperator()
@@ -61,9 +66,10 @@ class Connection
     @property string servername()
     {
         return _server.name;
-    } //TODO: Support server linking
+    }
 
-    //TODO: Maybe replace string's opEquals (or make a new string class/struct) to compare with toIRCLower
+    //TODO: Support server linking
+    //TODO: Maybe 'replace' string's opEquals (or make a new string class/struct) to compare with toIRCLower
     //TODO: Read errata
 
     this(TCPConnection connection, Server server)
@@ -118,6 +124,7 @@ class Connection
 
     void closeConnection()
     {
+        connected = false;
         _connection.close();
     }
 
@@ -316,6 +323,10 @@ class Connection
         {
             sendWelcome();
         }
+        else if (registrationAttempted)
+        {
+            onIncorrectPassword();
+        }
     }
 
     void onUser(Message message)
@@ -346,6 +357,10 @@ class Connection
         {
             sendWelcome();
         }
+        else if (registrationAttempted)
+        {
+            onIncorrectPassword();
+        }
     }
 
     void onPass(Message message)
@@ -367,12 +382,6 @@ class Connection
         }
 
         pass = message.parameters[0];
-
-        if (!_server.isPassCorrect(pass))
-        {
-            //NOTE: The RFCs don't allow ERR_PASSWDMISMATCH as a response to PASS
-            //TODO: If RFC-strictness is off, do send ERR_PASSWDMISMATCH
-        }
     }
 
     void onQuit(Message message)
@@ -1418,6 +1427,19 @@ class Connection
                 ], true));
 
         //TODO: If RFC-strictness is off, also send 002, 003, and 004
+    }
+
+    void onIncorrectPassword()
+    {
+        //NOTE: The RFCs don't allow ERR_PASSWDMISMATCH as a response to NICK/USER
+
+        version (BasicFixes)
+        {
+            send(Message(_server.name, "464", [nick, "Password incorrect"], true));
+        }
+
+        //NOTE: The RFCs don't actually specify what should happen here
+        closeConnection();
     }
 
     string getHost()
