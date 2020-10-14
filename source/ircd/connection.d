@@ -657,10 +657,16 @@ class Connection
                     && (!(c.modes.canFind('s') || c.modes.canFind('p')) || c.members.canFind(this))))
             {
                 //NOTE: The RFCs don't allow ERR_NOSUCHCHANNEL as a response to TOPIC
-                //TODO: If RFC-strictness is off, do send ERR_NOSUCHCHANNEL
-                send(Message(_server.name, "331", [
-                            nick, channelName, "No topic is set"
-                        ], true));
+                version (BasicFixes)
+                {
+                    sendErrNoSuchChannel(channelName);
+                }
+                else
+                {
+                    send(Message(_server.name, "331", [
+                                nick, channelName, "No topic is set"
+                            ], true));
+                }
             }
             else
             {
