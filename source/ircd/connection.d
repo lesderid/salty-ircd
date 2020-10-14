@@ -1096,7 +1096,11 @@ class Connection
         auto channelRange = _server.findChannelByName(message.parameters[0]);
         if (channelRange.empty)
         {
-            //TODO: If RFC-strictness is off, send an error message when the channel doesn't exist
+            //NOTE: The RFCs don't allow ERR_NOSUCHCHANNEL as a response to MODE
+            version (BasicFixes)
+            {
+                sendErrNoSuchChannel(message.parameters[0]);
+            }
             return;
         }
         auto channel = channelRange[0];
