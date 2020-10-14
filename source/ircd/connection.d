@@ -1041,7 +1041,11 @@ class Connection
                 auto add = modeString[0] == '+';
                 if (!add && modeString[0] != '-')
                 {
-                    //TODO: If RFC-strictness is off, send a malformed message error
+                    //NOTE: The RFCs don't specify what should happen on malformed mode operations
+                    version (BasicFixes)
+                    {
+                        sendMalformedMessageError(message.command, "Invalid mode operation: " ~ modeString[0]);
+                    }
                     continue;
                 }
 
@@ -1053,7 +1057,7 @@ class Connection
                 auto changedModes = modeString[1 .. $];
                 foreach (mode; changedModes)
                 {
-                    //when RFC-strictness is off, maybe send an error when trying to do an illegal change
+                    //TODO: If RFC-strictness is off, maybe send an error when trying to do an illegal change
                     switch (mode)
                     {
                         case 'i':
@@ -1132,7 +1136,11 @@ class Connection
                 auto add = modeString[0] == '+';
                 if (!add && modeString[0] != '-')
                 {
-                    //TODO: If RFC-strictness is off, send a malformed message error
+                    //NOTE: The RFCs don't specify what should happen on malformed mode operations
+                    version (BasicFixes)
+                    {
+                        sendMalformedMessageError(message.command, "Invalid mode operation: " ~ modeString[0]);
+                    }
                     return;
                 }
 
@@ -1441,6 +1449,11 @@ class Connection
         send(Message(_server.name, "ERROR", [
                     "Not implemented yet (" ~ description ~ ")"
                 ], true));
+    }
+
+    void sendMalformedMessageError(string command, string description)
+    {
+        send(Message(_server.name, "ERROR", [command, "Malformed message: " ~ description], true));
     }
 
     void sendWelcome()
