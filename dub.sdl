@@ -10,3 +10,10 @@ dependency "sdlang-d" version="~>0.10.5"
 preGenerateCommands "./generate-package-version.fish"
 versions "VibeDefaultMain"
 targetPath "out"
+
+configuration "application" {
+}
+
+configuration "modern" {
+    versions "BasicFixes" "SupportTLS"
+}
