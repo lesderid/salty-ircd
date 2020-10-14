@@ -229,8 +229,8 @@ class Server
     {
         foreach (c; connections.filter!(c => c.visibleTo(origin))
                 .filter!(c => !operatorsOnly || c.isOperator)
-                .filter!(c => [c.hostname, c.servername, c.realname,
-                        c.nick].any!(n => wildcardMatch(n, mask))))
+                .filter!(c => [c.hostname, c.servername, c.realname, c.nick]
+                                .any!(n => wildcardMatch(n, mask))))
         {
             //TODO: Don't leak secret/private channels if RFC-strictness is off (the RFCs don't seem to say anything about it?)
             auto channelName = c.channels.empty ? "*" : c.channels.array[0].name;
