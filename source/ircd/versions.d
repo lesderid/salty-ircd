@@ -11,6 +11,9 @@ module ircd.versions;
     (* NotStrict: enabled when any versions are enabled that disable RFC-strictness, i.e. any of the above)
 +/
 
+//TODO: Implement 'SupportTLS'
+//TODO: Implement 'MaxNickLengthConfigurable'
+
 version (Modern)
 {
     version = SupportTLS;

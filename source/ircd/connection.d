@@ -158,7 +158,10 @@ class Connection
                 continue;
             }
 
-            //TODO: If RFC-strictness is off, ignore command case
+            version (BasicFixes)
+            {
+                message.command = message.command.map!toUpper.to!string;
+            }
 
             //NOTE: The RFCs don't specify what 'being idle' means
             //		We assume that it's sending any message that isn't a PING/PONG.
