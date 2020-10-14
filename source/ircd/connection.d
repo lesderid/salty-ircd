@@ -1011,10 +1011,22 @@ class Connection
 
         if (target.toIRCLower != nick.toIRCLower)
         {
-            //TODO: If RFC-strictness is off, use a different error message when viewing modes and when changing modes
-            send(Message(_server.name, "502", [
-                        nick, "Cannot change mode for other users"
-                    ], true));
+            //NOTE: The RFCs don't specify a different message for viewing other users' modes
+            version (BasicFixes)
+            {
+                if (message.parameters.length > 1)
+                {
+                    send(Message(_server.name, "502", [nick, "Cannot change mode for other users"], true));
+                }
+                else
+                {
+                    send(Message(_server.name, "502", [nick, "Cannot view mode of other users"], true));
+                }
+            }
+            else
+            {
+                send(Message(_server.name, "502", [nick, "Cannot change mode for other users"], true));
+            }
             return;
         }
 
