@@ -165,6 +165,7 @@ class Connection
                 continue;
             }
 
+            //NOTE: The RFCs don't specify whether commands are case-sensitive
             version (BasicFixes)
             {
                 message.command = message.command.map!toUpper.to!string;
@@ -996,7 +997,11 @@ class Connection
         }
         else
         {
-            //TODO: If RFC-strictness is off, send an error
+            //NOTE: The RFCs don't allow ERR_NOSUCHNICK as a reponse to MODE
+            version (BasicFixes)
+            {
+                sendErrNoSuchNick(target);
+            }
         }
     }
 
@@ -1438,7 +1443,6 @@ class Connection
     void onIncorrectPassword()
     {
         //NOTE: The RFCs don't allow ERR_PASSWDMISMATCH as a response to NICK/USER
-
         version (BasicFixes)
         {
             send(Message(_server.name, "464", [nick, "Password incorrect"], true));

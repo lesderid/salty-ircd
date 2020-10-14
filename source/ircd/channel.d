@@ -224,6 +224,7 @@ class Channel
 
         modes ~= mode;
 
+        //NOTE: The RFCs don't specify that the invite list should be cleared on +i
         version (BasicFixes)
         {
             if (mode == 'i')
