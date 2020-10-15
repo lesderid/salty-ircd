@@ -27,7 +27,9 @@ version (MaxNickLengthConfigurable) version = NotStrict;
 
 version (NotStrict)
 {
-    version (SupportTLS) {}
+    version (SupportTLS)
+    {
+    }
     else
     {
         static assert(false, "TLS support must be enabled if any non-strict versions are enabled.");

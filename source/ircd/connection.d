@@ -170,7 +170,9 @@ class Connection
             //NOTE: The RFCs don't specify whether commands are case-sensitive
             version (BasicFixes)
             {
-                message.command = message.command.map!toUpper.to!string;
+                message.command = message.command
+                    .map!toUpper
+                    .to!string;
             }
 
             //NOTE: The RFCs don't specify what 'being idle' means
@@ -1017,16 +1019,22 @@ class Connection
             {
                 if (message.parameters.length > 1)
                 {
-                    send(Message(_server.name, "502", [nick, "Cannot change mode for other users"], true));
+                    send(Message(_server.name, "502", [
+                                nick, "Cannot change mode for other users"
+                            ], true));
                 }
                 else
                 {
-                    send(Message(_server.name, "502", [nick, "Cannot view mode of other users"], true));
+                    send(Message(_server.name, "502", [
+                                nick, "Cannot view mode of other users"
+                            ], true));
                 }
             }
             else
             {
-                send(Message(_server.name, "502", [nick, "Cannot change mode for other users"], true));
+                send(Message(_server.name, "502", [
+                            nick, "Cannot change mode for other users"
+                        ], true));
             }
             return;
         }
@@ -1045,7 +1053,8 @@ class Connection
                     //NOTE: The RFCs don't specify what should happen on malformed mode operations
                     version (BasicFixes)
                     {
-                        sendMalformedMessageError(message.command, "Invalid mode operation: " ~ modeString[0]);
+                        sendMalformedMessageError(message.command,
+                                "Invalid mode operation: " ~ modeString[0]);
                     }
                     continue;
                 }
@@ -1153,7 +1162,8 @@ class Connection
                     //NOTE: The RFCs don't specify what should happen on malformed mode operations
                     version (BasicFixes)
                     {
-                        sendMalformedMessageError(message.command, "Invalid mode operation: " ~ modeString[0]);
+                        sendMalformedMessageError(message.command,
+                                "Invalid mode operation: " ~ modeString[0]);
                     }
                     return;
                 }
@@ -1174,7 +1184,7 @@ class Connection
                         //TODO: If RFC-strictness is on, limit mode changes with parameter to 3 per command
 
                         case 'o':
-                            case 'v':
+                        case 'v':
                             if (i + 1 == message.parameters.length)
                             {
                                 break Lforeach;
@@ -1226,7 +1236,8 @@ class Connection
                                     }
                                     else
                                     {
-                                        sendMalformedMessageError(message.command, "Invalid user mask: " ~ mask);
+                                        sendMalformedMessageError(message.command,
+                                                "Invalid user mask: " ~ mask);
                                         break Lforeach;
                                     }
                                 }
@@ -1298,11 +1309,11 @@ class Connection
                             }
                             break;
                         case 'i':
-                            case 'm':
-                            case 'n':
-                            case 'p':
-                            case 's':
-                            case 't':
+                        case 'm':
+                        case 'n':
+                        case 'p':
+                        case 's':
+                        case 't':
                             bool success;
                             if (add)
                                 success = channel.setMode(mode);
@@ -1477,7 +1488,9 @@ class Connection
 
     void sendMalformedMessageError(string command, string description)
     {
-        send(Message(_server.name, "ERROR", [command, "Malformed message: " ~ description], true));
+        send(Message(_server.name, "ERROR", [
+                    command, "Malformed message: " ~ description
+                ], true));
     }
 
     void sendWelcome()
@@ -1487,17 +1500,20 @@ class Connection
         enum availableUserModes = "aiwroOs";
         enum availableChannelModes = "OovaimnqpsrtklbeI";
 
-        send(Message(_server.name, "001", [nick,
-                    "Welcome", "to", "the", "Internet", "Relay", "Network", prefix
+        send(Message(_server.name, "001", [
+                    nick, "Welcome", "to", "the", "Internet", "Relay", "Network",
+                    prefix
                 ], false));
-        send(Message(_server.name, "002", [nick,
-                    "Your", "host", "is", _server.name ~ ",", "running", "version",  _server.versionString
+        send(Message(_server.name, "002", [
+                    nick, "Your", "host", "is", _server.name ~ ",", "running",
+                    "version", _server.versionString
                 ], false));
-        send(Message(_server.name, "003", [nick,
-                    "This", "server", "was", "created", buildDate
+        send(Message(_server.name, "003", [
+                    nick, "This", "server", "was", "created", buildDate
                 ], false));
-        send(Message(_server.name, "004", [nick,
-                    _server.name, _server.versionString, availableUserModes, availableChannelModes
+        send(Message(_server.name, "004", [
+                    nick, _server.name, _server.versionString,
+                    availableUserModes, availableChannelModes
                 ], false));
     }
 
