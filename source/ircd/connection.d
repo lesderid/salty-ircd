@@ -13,6 +13,8 @@ import vibe.core.core;
 import vibe.core.net;
 import vibe.stream.operations : readLine;
 
+import ircd.versionInfo;
+
 import ircd.message;
 import ircd.server;
 import ircd.channel;
@@ -1480,11 +1482,23 @@ class Connection
 
     void sendWelcome()
     {
-        send(Message(_server.name, "001", [
-                    nick, "Welcome to the Internet Relay Network " ~ prefix
-                ], true));
+        //NOTE: According to the RFCs these aren't ':'-prefixed strings but separate parameters
 
-        //TODO: If RFC-strictness is off, also send 002, 003, and 004
+        enum availableUserModes = "aiwroOs";
+        enum availableChannelModes = "OovaimnqpsrtklbeI";
+
+        send(Message(_server.name, "001", [nick,
+                    "Welcome", "to", "the", "Internet", "Relay", "Network", prefix
+                ], false));
+        send(Message(_server.name, "002", [nick,
+                    "Your", "host", "is", _server.name ~ ",", "running", "version",  _server.versionString
+                ], false));
+        send(Message(_server.name, "003", [nick,
+                    "This", "server", "was", "created", buildDate
+                ], false));
+        send(Message(_server.name, "004", [nick,
+                    _server.name, _server.versionString, availableUserModes, availableChannelModes
+                ], false));
     }
 
     void onIncorrectPassword()
