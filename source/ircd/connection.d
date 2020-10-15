@@ -172,7 +172,7 @@ class Connection
             }
 
             //NOTE: The RFCs don't specify what 'being idle' means
-            //		We assume that it's sending any message that isn't a PING/PONG.
+            //      We assume that it's sending any message that isn't a PING/PONG.
             if (message.command != "PING" && message.command != "PONG")
             {
                 lastMessageTime = Clock.currTime;
@@ -863,10 +863,10 @@ class Connection
         }
 
         //NOTE: The RFCs are ambiguous about the parameter(s).
-        //		It specifies one allowed parameter type, a space-separated list of nicknames (i.e. prefixed with ':').
-        //		However, the nicknames in the example are sent as separate parameters, not as a single string prefixed with ':'.
-        //		For this implementation, we assume the example is wrong, like most clients seem to assume as well.
-        //		(Other server implementations usually seem to support both interpretations.)
+        //      It specifies one allowed parameter type, a space-separated list of nicknames (i.e. prefixed with ':').
+        //      However, the nicknames in the example are sent as separate parameters, not as a single string prefixed with ':'.
+        //      For this implementation, we assume the example is wrong, like most clients seem to assume as well.
+        //      (Other server implementations usually seem to support both interpretations.)
         _server.ison(this, message.parameters[0].split);
     }
 
@@ -1061,15 +1061,15 @@ class Connection
                     switch (mode)
                     {
                         case 'i':
-                            case 'w':
-                            case 's':
+                        case 'w':
+                        case 's':
                             if (add)
                                 modes ~= mode;
                             else
                                 removeMode(mode);
                             break;
                         case 'o':
-                            case 'O':
+                        case 'O':
                             if (!add)
                                 removeMode(mode);
                             break;
@@ -1198,20 +1198,35 @@ class Connection
                                 processedParameters ~= memberNick;
                             }
                             break;
-                        case 'b': //TODO: Implement bans
-                            case 'e': //TODO: Implement ban exceptions
-                            case 'I': //TODO: Implement invite lists
+                        case 'b':
+                        case 'e': //TODO: Implement ban exceptions
+                        case 'I': //TODO: Implement invite lists
                             if (i + 1 == message.parameters.length)
                             {
                                 //TODO: Figure out what to do when we need more mode parameters
                                 break Lforeach;
                             }
                             auto mask = message.parameters[++i];
-                            //TODO: If RFC-strictness is off, interpret '<nick>' as '<nick>!*@*'
                             if (!Server.isValidUserMask(mask))
                             {
-                                //TODO: If RFC-strictness is off, send an error
-                                break Lforeach;
+                                //NOTE: The RFCs don't specify whether nicks are valid masks
+                                //NOTE: The RFCs don't allow an error reply on an invalid user mask
+                                version (BasicFixes)
+                                {
+                                    if (Server.isValidNick(mask))
+                                    {
+                                        mask ~= "!*@*";
+                                    }
+                                    else
+                                    {
+                                        sendMalformedMessageError(message.command, "Invalid user mask: " ~ mask);
+                                        break Lforeach;
+                                    }
+                                }
+                                else
+                                {
+                                    break Lforeach;
+                                }
                             }
 
                             bool success;
