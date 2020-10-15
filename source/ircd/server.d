@@ -12,7 +12,7 @@ import std.string;
 import vibe.core.core;
 import vibe.core.net;
 
-import ircd.packageVersion;
+import ircd.versionInfo;
 
 import ircd.message;
 import ircd.connection;
@@ -24,7 +24,7 @@ class Server
 {
     Connection[] connections;
 
-    enum versionString = "salty-ircd-" ~ packageVersion;
+    enum versionString = "salty-ircd-" ~ gitVersion;
 
     string name;
     enum string info = "A salty-ircd server"; //TODO: Make server info configurable
