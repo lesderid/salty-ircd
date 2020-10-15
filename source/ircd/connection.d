@@ -366,8 +366,6 @@ class Connection
 
     void onPass(Message message)
     {
-        //TODO: Make sure PASS is sent before the NICK/USER combination
-
         if (message.parameters.length < 1)
         {
             sendErrNeedMoreParams(message.command);
@@ -456,7 +454,9 @@ class Connection
                                     nick, channelName, "Cannot join channel (+i)"
                                 ]));
                     }
-                    else if (channel.maskLists['b'].any!(m => matchesMask(m)))
+                    else if (channel.maskLists['b'].any!(m => matchesMask(m))
+                            && !channel.maskLists['e'].any!(m => matchesMask(m))
+                            && !channel.inviteHolders.canFind(this))
                     {
                         send(Message(_server.name, "474", [
                                     nick, channelName, "Cannot join channel (+b)"
@@ -938,7 +938,6 @@ class Connection
 
         if (channelList.length != 1 && channelList.length != userList.length)
         {
-            //TODO: Figure out what the right error is here
             sendErrNeedMoreParams(message.command);
             return;
         }
@@ -1057,7 +1056,6 @@ class Connection
                 auto changedModes = modeString[1 .. $];
                 foreach (mode; changedModes)
                 {
-                    //TODO: If RFC-strictness is off, maybe send an error when trying to do an illegal change
                     switch (mode)
                     {
                         case 'i':
@@ -1169,7 +1167,6 @@ class Connection
                 auto changedModes = modeString[1 .. $];
                 Lforeach: foreach (mode; changedModes)
                 {
-                    //when RFC-strictness is off, maybe send an error when trying to do an illegal change
                     switch (mode)
                     {
                         //TODO: If RFC-strictness is on, limit mode changes with parameter to 3 per command
@@ -1178,7 +1175,6 @@ class Connection
                             case 'v':
                             if (i + 1 == message.parameters.length)
                             {
-                                //TODO: Figure out what to do when we need more mode parameters
                                 break Lforeach;
                             }
                             auto memberNick = message.parameters[++i];
@@ -1209,11 +1205,10 @@ class Connection
                             }
                             break;
                         case 'b':
-                        case 'e': //TODO: Implement ban exceptions
-                        case 'I': //TODO: Implement invite lists
+                        case 'e':
+                        case 'I':
                             if (i + 1 == message.parameters.length)
                             {
-                                //TODO: Figure out what to do when we need more mode parameters
                                 break Lforeach;
                             }
                             auto mask = message.parameters[++i];
@@ -1253,7 +1248,6 @@ class Connection
                         case 'k':
                             if (i + 1 == message.parameters.length)
                             {
-                                //TODO: Figure out what to do when we need more mode parameters
                                 break Lforeach;
                             }
                             auto key = message.parameters[++i];
@@ -1274,7 +1268,6 @@ class Connection
                             {
                                 if (i + 1 == message.parameters.length)
                                 {
-                                    //TODO: Figure out what to do when we need more mode parameters
                                     break Lforeach;
                                 }
 
@@ -1302,9 +1295,9 @@ class Connection
                                 }
                             }
                             break;
-                        case 'i': //TODO: Implement invite-only channels
-                            case 'm': //TODO: Implement channel moderation
-                            case 'n': //TODO: Implement the no messages from clients on the outside flag
+                        case 'i':
+                            case 'm':
+                            case 'n':
                             case 'p':
                             case 's':
                             case 't':

@@ -356,6 +356,9 @@ class Channel
 
     string nickPrefix(Connection member)
     {
+        if (!members.canFind(member))
+            return null;
+
         if (memberModes[member].canFind('o'))
         {
             return "@";
@@ -389,7 +392,8 @@ class Channel
             return false;
         }
         else if (maskLists['b'].any!(m => connection.matchesMask(m))
-                && !maskLists['e'].any!(m => connection.matchesMask(m)))
+                && !maskLists['e'].any!(m => connection.matchesMask(m))
+                && nickPrefix(connection).length == 0)
         {
             return false;
         }
