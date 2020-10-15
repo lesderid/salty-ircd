@@ -1105,12 +1105,22 @@ class Connection
         }
         auto channel = channelRange[0];
 
+        //NOTE: The RFCs are inconsistent on channel mode query syntax for mask list modes
+        //      ('MODE #chan +b', but 'MODE #chan e' and 'MODE #chan I')
+        version (BasicFixes)
+        {
+            enum listQueryModes = ["+b", "+e", "+I", "e", "I"];
+        }
+        else
+        {
+            enum listQueryModes = ["+b", "e", "I"];
+        }
+
         if (message.parameters.length == 1)
         {
             channel.sendModes(this);
         }
-        //TODO: If RFC-strictness is off, also allow '+e' and '+I' (?)
-        else if (message.parameters.length == 2 && ["+b", "e", "I"].canFind(message.parameters[1]))
+        else if (message.parameters.length == 2 && listQueryModes.canFind(message.parameters[1]))
         {
             auto listChar = message.parameters[1][$ - 1];
             final switch (listChar)
