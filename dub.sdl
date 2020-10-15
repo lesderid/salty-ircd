@@ -7,7 +7,7 @@ targetType "executable"
 dependency "vibe-core" version="~>1.8.1"
 dependency "vibe-d:stream" version="~>0.9.0-alpha.1"
 dependency "sdlang-d" version="~>0.10.5"
-preGenerateCommands "./generate-package-version.fish"
+preBuildCommands "./generate-version-info.fish"
 versions "VibeDefaultMain"
 targetPath "out"
 
