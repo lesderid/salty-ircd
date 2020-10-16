@@ -18,6 +18,7 @@ import ircd.message;
 import ircd.connection;
 import ircd.channel;
 import ircd.helpers;
+import ircd.numerics;
 
 //TODO: Make this a struct?
 class Server
@@ -294,24 +295,23 @@ class Server
                     && !ch.modes.canFind('p')).empty);
         if (!otherUsers.empty)
         {
-            connection.send(Message(name, "353", [
-                        connection.nick, "=", "*",
-                        otherUsers.map!(m => m.nick).join(' ')
-                    ], true));
+            connection.sendNumeric!RPL_NAMREPLY("=", "*", otherUsers.map!(m => m.nick).join(' '));
         }
 
-        connection.sendRplEndOfNames("*");
+        connection.sendNumeric!RPL_ENDOFNAMES("*");
     }
 
     void sendFullList(Connection connection)
     {
         foreach (channel; channels.filter!(c => c.visibleTo(connection)))
         {
-            connection.sendRplList(channel.name,
-                    channel.members.filter!(m => m.visibleTo(connection))
-                    .array.length, channel.topic);
+            connection.sendNumeric!RPL_LIST(channel.name, channel.members
+                    .filter!(m => m.visibleTo(connection))
+                    .array
+                    .length
+                    .to!string, channel.topic);
         }
-        connection.sendRplListEnd();
+        connection.sendNumeric!RPL_LISTEND();
     }
 
     void sendPartialList(Connection connection, string[] channelNames)
@@ -319,24 +319,25 @@ class Server
         foreach (channel; channels.filter!(c => channelNames.canFind(c.name)
                 && c.visibleTo(connection)))
         {
-            connection.sendRplList(channel.name,
-                    channel.members.filter!(m => m.visibleTo(connection))
-                    .array.length, channel.topic);
+            connection.sendNumeric!RPL_LIST(channel.name, channel.members
+                    .filter!(m => m.visibleTo(connection))
+                    .array
+                    .length
+                    .to!string, channel.topic);
         }
-        connection.sendRplListEnd();
+        connection.sendNumeric!RPL_LISTEND();
     }
 
     void sendVersion(Connection connection)
     {
-        connection.send(Message(name, "351", [
-                    connection.nick, versionString ~ ".", name, ""
-                ], true));
+        //TODO: Include enabled versions in comments?
+        connection.sendNumeric!RPL_VERSION(versionString ~ ".", name, ":");
     }
 
     void sendTime(Connection connection)
     {
         auto timeString = Clock.currTime.toISOExtString;
-        connection.send(Message(name, "391", [connection.nick, name, timeString], true));
+        connection.sendNumeric!RPL_TIME(name, timeString);
     }
 
     void invite(Connection inviter, string target, string channelName)
@@ -351,17 +352,13 @@ class Server
 
     void sendMotd(Connection connection)
     {
-        connection.send(Message(name, "375", [
-                    connection.nick, ":- " ~ name ~ " Message of the day - "
-                ], true));
+        connection.sendNumeric!RPL_MOTDSTART("- " ~ name ~ " Message of the day - ");
         foreach (line; motd.splitLines)
         {
             //TODO: Implement line wrapping
-            connection.send(Message(name, "372", [connection.nick, ":- " ~ line], true));
+            connection.sendNumeric!RPL_MOTD("- " ~ line);
         }
-        connection.send(Message(name, "376", [
-                    connection.nick, "End of MOTD command"
-                ], true));
+        connection.sendNumeric!RPL_ENDOFMOTD();
     }
 
     void sendLusers(Connection connection)
@@ -369,79 +366,58 @@ class Server
         //TODO: If RFC-strictness is off, use '1 server' instead of '1 servers' if the network (or the part of the network of the query) has only one server
 
         //TODO: Support services and multiple servers
-        connection.send(Message(name, "251", [
-                    connection.nick,
-                    "There are " ~ connections.filter!(c => c.registered)
-                    .count
-                    .to!string ~ " users and 0 services on 1 servers"
-                ], true));
+        connection.sendNumeric!RPL_LUSERCLIENT(
+                "There are " ~ connections.filter!(c => c.registered)
+                .count
+                .to!string ~ " users and 0 services on 1 servers");
 
         if (connections.any!(c => c.isOperator))
         {
-            connection.send(Message(name, "252", [
-                        connection.nick,
-                        connections.count!(c => c.isOperator)
-                        .to!string, "operator(s) online"
-                    ], true));
+            connection.sendNumeric!RPL_LUSEROP(connections.count!(c => c.isOperator)
+                    .to!string);
         }
 
         if (connections.any!(c => !c.registered))
         {
-            connection.send(Message(name, "253", [
-                        connection.nick,
-                        connections.count!(c => !c.registered)
-                        .to!string, "unknown connection(s)"
-                    ], true));
+            connection.sendNumeric!RPL_LUSERUNKNOWN(connections.count!(c => !c.registered)
+                    .to!string);
         }
 
         if (channels.length > 0)
         {
-            connection.send(Message(name, "254", [
-                        connection.nick, channels.length.to!string,
-                        "channels formed"
-                    ], true));
+            connection.sendNumeric!RPL_LUSERCHANNELS(channels.length.to!string);
         }
 
-        connection.send(Message(name, "255", [
-                    connection.nick,
-                    "I have " ~ connections.length.to!string ~ " clients and 1 servers"
-                ], true));
+        connection.sendNumeric!RPL_LUSERME(
+                "I have " ~ connections.length.to!string ~ " clients and 1 servers");
     }
 
     void ison(Connection connection, string[] nicks)
     {
         auto reply = nicks.filter!(n => canFindConnectionByNick(n)).join(' ');
-
-        connection.send(Message(name, "303", [connection.nick, reply], true));
+        connection.sendNumeric!RPL_ISON(reply);
     }
 
     void whois(Connection connection, string mask)
     {
         auto user = findConnectionByNick(mask)[0];
 
-        connection.send(Message(name, "311", [
-                    connection.nick, user.nick, user.user, user.hostname, "*",
-                    user.hostname
-                ], true));
+        connection.sendNumeric!RPL_WHOISUSER(user.nick, user.user,
+                user.hostname, "*", user.realname);
+
         //TODO: Send information about the user's actual server (which is not necessarily this one)
-        connection.send(Message(name, "312", [
-                    connection.nick, user.nick, name, info
-                ], true));
+        connection.sendNumeric!RPL_WHOISSERVER(user.nick, name, info);
+
         if (user.isOperator)
         {
-            connection.send(Message(name, "313", [
-                        connection.nick, user.nick, "is an IRC operator"
-                    ], true));
+            connection.sendNumeric!RPL_WHOISOPERATOR(user.nick);
         }
+
         auto idleSeconds = (Clock.currTime - user.lastMessageTime).total!"seconds";
-        connection.send(Message(name, "317", [
-                    connection.nick, user.nick, idleSeconds.to!string,
-                    "seconds idle"
-                ], true));
+        connection.sendNumeric!RPL_WHOISIDLE(user.nick, idleSeconds.to!string);
+
         auto userChannels = user.channels.map!(c => c.nickPrefix(user) ~ c.name).join(' ');
-        connection.send(Message(name, "319", [
-                    connection.nick, user.nick, userChannels
-                ], true));
+        connection.sendNumeric!RPL_WHOISCHANNELS(user.nick, userChannels);
     }
 
     void kill(Connection killer, string nick, string comment)
@@ -482,10 +458,8 @@ class Server
         foreach (command, count; _commandUsage)
         {
             //TODO: Implement remote count
-            connection.send(Message(name, "212", [
-                        connection.nick, command, count.to!string,
-                        _commandBytes[command].to!string, "0"
-                    ], false));
+            connection.sendNumeric!RPL_STATSCOMMANDS(command,
+                    count.to!string, _commandBytes[command].to!string, "0");
         }
     }
 
@@ -497,7 +471,7 @@ class Server
 
         auto uptimeString = format!"Server Up %d days %d:%02d:%02d"(uptime.days,
                 uptime.hours, uptime.minutes, uptime.seconds);
-        connection.send(Message(name, "242", [connection.nick, uptimeString], true));
+        connection.sendNumeric!RPL_STATSUPTIME(uptimeString);
     }
 
     void setPass(string pass)

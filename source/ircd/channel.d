@@ -8,6 +8,7 @@ import ircd.connection;
 import ircd.server;
 import ircd.message;
 import ircd.helpers;
+import ircd.numerics;
 
 //TODO: Make this a struct?
 class Channel
@@ -96,16 +97,14 @@ class Channel
 
         auto onChannel = members.canFind(connection);
 
-        connection.send(Message(_server.name, "353", [
-                    connection.nick, channelType, name,
-                    members.filter!(m => onChannel || !m.modes.canFind('i'))
-                    .map!(m => prefixedNick(m))
-                    .join(' ')
-                ], true));
+        connection.sendNumeric!RPL_NAMREPLY(channelType, name,
+                members.filter!(m => onChannel || !m.modes.canFind('i'))
+                .map!(m => prefixedNick(m))
+                .join(' '));
 
         if (sendRplEndOfNames)
         {
-            connection.sendRplEndOfNames(name);
+            connection.sendNumeric!RPL_ENDOFNAMES(name);
         }
     }
 
@@ -128,17 +127,9 @@ class Channel
     void sendTopic(Connection connection)
     {
         if (topic.empty)
-        {
-            connection.send(Message(_server.name, "331", [
-                        connection.nick, name, "No topic is set"
-                    ]));
-        }
+            connection.sendNumeric!RPL_NOTOPIC(name);
         else
-        {
-            connection.send(Message(_server.name, "332", [
-                        connection.nick, name, topic
-                    ], true));
-        }
+            connection.sendNumeric!RPL_TOPIC(name, topic);
     }
 
     void setTopic(Connection connection, string newTopic)
@@ -183,9 +174,8 @@ class Channel
             specialModeParameters ~= memberLimit.to!string;
         }
 
-        user.send(Message(_server.name, "324", [
-                    user.nick, name, "+" ~ modes.idup ~ specialModes
-                ] ~ specialModeParameters));
+        user.sendNumeric!RPL_CHANNELMODEIS([name,
+                "+" ~ modes.idup ~ specialModes] ~ specialModeParameters);
     }
 
     bool setMemberMode(Connection target, char mode)
@@ -280,42 +270,30 @@ class Channel
     {
         foreach (entry; maskLists['b'])
         {
-            connection.send(Message(_server.name, "367", [
-                        connection.nick, name, entry
-                    ], false));
+            connection.sendNumeric!RPL_BANLIST(name, entry);
         }
 
-        connection.send(Message(_server.name, "368", [
-                    connection.nick, name, "End of channel ban list"
-                ], true));
+        connection.sendNumeric!RPL_ENDOFBANLIST(name);
     }
 
     void sendExceptList(Connection connection)
     {
         foreach (entry; maskLists['e'])
         {
-            connection.send(Message(_server.name, "348", [
-                        connection.nick, name, entry
-                    ], false));
+            connection.sendNumeric!RPL_EXCEPTLIST(name, entry);
         }
 
-        connection.send(Message(_server.name, "349", [
-                    connection.nick, name, "End of channel exception list"
-                ], true));
+        connection.sendNumeric!RPL_ENDOFEXCEPTLIST(name);
     }
 
     void sendInviteList(Connection connection)
     {
         foreach (entry; maskLists['I'])
         {
-            connection.send(Message(_server.name, "346", [
-                        connection.nick, name, entry
-                    ], false));
+            connection.sendNumeric!RPL_INVITELIST(name, entry);
         }
 
-        connection.send(Message(_server.name, "347", [
-                    connection.nick, name, "End of channel invite list"
-                ], true));
+        connection.sendNumeric!RPL_ENDOFINVITELIST(name);
     }
 
     bool setKey(string key)

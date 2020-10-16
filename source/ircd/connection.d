@@ -19,6 +19,7 @@ import ircd.message;
 import ircd.server;
 import ircd.channel;
 import ircd.helpers;
+import ircd.numerics;
 
 //TODO: Make this a struct?
 class Connection
@@ -124,6 +125,12 @@ class Connection
         _connection.write(messageString ~ "\r\n");
     }
 
+    void sendNumeric(alias numeric)(string[] params...)
+    {
+        auto message = Message(_server.name, numeric.number, [nick] ~ params ~ numeric.params);
+        send(message);
+    }
+
     void closeConnection()
     {
         connected = false;
@@ -187,7 +194,10 @@ class Connection
             if (!registered && !["NICK", "USER", "PASS", "PING", "PONG",
                     "QUIT"].canFind(message.command))
             {
-                sendErrNotRegistered();
+                //NOTE: This actually does not work if NICK hasn't been sent
+                //      The first parameter for numerics is the client's nick.
+                //      This makes it technically impossible to correctly implement the RFCs.
+                sendNumeric!ERR_NOTREGISTERED();
                 continue;
             }
 
@@ -276,9 +286,7 @@ class Connection
                     break;
                 default:
                     writeln("unknown command '", message.command, "'");
-                    send(Message(_server.name, "421", [
-                                nick, message.command, "Unknown command"
-                            ]));
+                    sendNumeric!ERR_UNKNOWNCOMMAND();
                     continue;
             }
 
@@ -292,7 +300,7 @@ class Connection
     {
         if (message.parameters.length == 0)
         {
-            sendErrNoNickGiven();
+            sendNumeric!ERR_NONICKNAMEGIVEN();
             return;
         }
 
@@ -300,17 +308,13 @@ class Connection
 
         if (!_server.isNickAvailable(newNick) && newNick.toIRCLower != nick.toIRCLower)
         {
-            send(Message(_server.name, "433", [
-                        nick, newNick, "Nickname is already in use"
-                    ]));
+            sendNumeric!ERR_NICKNAMEINUSE(newNick);
             return;
         }
 
         if (!_server.isValidNick(newNick))
         {
-            send(Message(_server.name, "432", [
-                        nick, newNick, "Erroneous nickname"
-                    ]));
+            sendNumeric!ERR_ERRONEUSNICKNAME(newNick);
             return;
         }
 
@@ -338,15 +342,13 @@ class Connection
     {
         if (message.parameters.length < 4)
         {
-            sendErrNeedMoreParams(message.command);
+            sendNumeric!ERR_NEEDMOREPARAMS(message.command);
             return;
         }
 
         if (user !is null)
         {
-            send(Message(_server.name, "462", [
-                        nick, "Unauthorized command (already registered)"
-                    ], true));
+            sendNumeric!ERR_ALREADYREGISTRED();
             return;
         }
 
@@ -372,15 +374,13 @@ class Connection
     {
         if (message.parameters.length < 1)
         {
-            sendErrNeedMoreParams(message.command);
+            sendNumeric!ERR_NEEDMOREPARAMS(message.command);
             return;
         }
 
         if (registered)
         {
-            send(Message(_server.name, "462", [
-                        nick, "Unauthorized command (already registered)"
-                    ], true));
+            sendNumeric!ERR_ALREADYREGISTRED();
             return;
         }
 
@@ -406,7 +406,7 @@ class Connection
     {
         if (message.parameters.length == 0)
         {
-            sendErrNeedMoreParams(message.command);
+            sendNumeric!ERR_NEEDMOREPARAMS(message.command);
             return;
         }
 
@@ -425,7 +425,7 @@ class Connection
         {
             if (!Server.isValidChannelName(channelName))
             {
-                sendErrNoSuchChannel(channelName);
+                sendNumeric!ERR_NOSUCHCHANNEL(channelName);
             }
             else
             {
@@ -446,32 +446,24 @@ class Connection
                     if (!channel.memberLimit.isNull
                             && channel.members.length >= channel.memberLimit.get)
                     {
-                        send(Message(_server.name, "471", [
-                                    nick, channelName, "Cannot join channel (+l)"
-                                ]));
+                        sendNumeric!ERR_CHANNELISFULL(channelName);
                     }
                     else if (channel.modes.canFind('i')
                             && !(channel.maskLists['I'].any!(m => matchesMask(m))
                                 || channel.inviteHolders.canFind(this)))
                     {
-                        send(Message(_server.name, "473", [
-                                    nick, channelName, "Cannot join channel (+i)"
-                                ]));
+                        sendNumeric!ERR_INVITEONLYCHAN(channelName);
                     }
                     else if (channel.maskLists['b'].any!(m => matchesMask(m))
                             && !channel.maskLists['e'].any!(m => matchesMask(m))
                             && !channel.inviteHolders.canFind(this))
                     {
-                        send(Message(_server.name, "474", [
-                                    nick, channelName, "Cannot join channel (+b)"
-                                ]));
+                        sendNumeric!ERR_BANNEDFROMCHAN(channelName);
                     }
                     else if (channel.key !is null && (channelKeys.length < i + 1
                             || channelKeys[i] != channel.key))
                     {
-                        send(Message(_server.name, "475", [
-                                    nick, channelName, "Cannot join channel (+k)"
-                                ]));
+                        sendNumeric!ERR_BADCHANNELKEY(channelName);
                     }
                     else
                     {
@@ -486,7 +478,7 @@ class Connection
     {
         if (message.parameters.length == 0)
         {
-            sendErrNeedMoreParams(message.command);
+            sendNumeric!ERR_NEEDMOREPARAMS(message.command);
             return;
         }
 
@@ -495,25 +487,19 @@ class Connection
         {
             if (!Server.isValidChannelName(channel))
             {
-                sendErrNoSuchChannel(channel);
+                sendNumeric!ERR_NOSUCHCHANNEL(channel);
             }
             else if (!_server.canFindChannelByName(channel)
                     || !channels.canFind!(c => c.name.toIRCLower == channel.toIRCLower))
             {
-                send(Message(_server.name, "442", [
-                            nick, channel, "You're not on that channel"
-                        ], true));
+                sendNumeric!ERR_NOTONCHANNEL(channel);
             }
             else
             {
                 if (message.parameters.length > 1)
-                {
                     _server.part(this, channel, message.parameters[1]);
-                }
                 else
-                {
                     _server.part(this, channel, null);
-                }
             }
         }
     }
@@ -526,14 +512,12 @@ class Connection
 
         if (message.parameters.length == 0)
         {
-            send(Message(_server.name, "411", [
-                        nick, "No recipient given (PRIVMSG)"
-                    ], true));
+            sendNumeric!ERR_NORECIPIENT_PRIVMSG();
             return;
         }
         if (message.parameters.length == 1)
         {
-            send(Message(_server.name, "412", [nick, "No text to send"], true));
+            sendNumeric!ERR_NOTEXTTOSEND();
             return;
         }
 
@@ -542,13 +526,11 @@ class Connection
             auto channelRange = _server.findChannelByName(target);
             if (channelRange.empty)
             {
-                sendErrNoSuchNick(target);
+                sendNumeric!ERR_NOSUCHNICK(target);
             }
             else if (!channelRange[0].canReceiveMessagesFromUser(this))
             {
-                send(Message(_server.name, "404", [
-                            nick, target, "Cannot send to channel"
-                        ], true));
+                sendNumeric!ERR_CANNOTSENDTOCHAN(target);
             }
             else
             {
@@ -559,7 +541,7 @@ class Connection
         {
             if (!_server.canFindConnectionByNick(target))
             {
-                sendErrNoSuchNick(target);
+                sendNumeric!ERR_NOSUCHNICK(target);
             }
             else
             {
@@ -568,30 +550,35 @@ class Connection
                 auto targetUser = _server.findConnectionByNick(target)[0];
                 if (targetUser.modes.canFind('a'))
                 {
-                    sendRplAway(target, targetUser.awayMessage);
+                    sendNumeric!RPL_AWAY(target, targetUser.awayMessage);
                 }
             }
         }
         else
         {
             //is this the right reply?
-            sendErrNoSuchNick(target);
+            sendNumeric!ERR_NOSUCHNICK(target);
         }
     }
 
     void onNotice(Message message)
     {
         //TODO: Support special message targets
-        auto target = message.parameters[0];
-        auto text = message.parameters[1];
-
-        //TODO: Figure out what we are allowed to send exactly
-
-        if (message.parameters.length < 2)
+        if (message.parameters.length == 0)
         {
+            sendNumeric!ERR_NORECIPIENT_NOTICE();
             return;
         }
+        auto target = message.parameters[0];
 
+        if (message.parameters.length == 1)
+        {
+            sendNumeric!ERR_NOTEXTTOSEND();
+            return;
+        }
+        auto text = message.parameters[1];
+
+        //TODO: Fix replies
         if (Server.isValidChannelName(target) && _server.canFindChannelByName(target))
         {
             _server.noticeToChannel(this, target, text);
@@ -624,7 +611,7 @@ class Connection
         }
 
         auto name = message.parameters.length == 0 ? "*" : message.parameters[0];
-        send(Message(_server.name, "315", [nick, name, "End of WHO list"], true));
+        sendNumeric!RPL_ENDOFWHO(name);
     }
 
     void onAway(Message message)
@@ -633,17 +620,13 @@ class Connection
         {
             removeMode('a');
             awayMessage = null;
-            send(Message(_server.name, "305", [
-                        nick, "You are no longer marked as being away"
-                    ], true));
+            sendNumeric!RPL_UNAWAY();
         }
         else
         {
             modes ~= 'a';
             awayMessage = message.parameters[0];
-            send(Message(_server.name, "306", [
-                        nick, "You have been marked as being away"
-                    ], true));
+            sendNumeric!RPL_NOWAWAY();
         }
     }
 
@@ -651,7 +634,7 @@ class Connection
     {
         if (message.parameters.length == 0)
         {
-            sendErrNeedMoreParams(message.command);
+            sendNumeric!ERR_NEEDMOREPARAMS(message.command);
             return;
         }
 
@@ -663,15 +646,9 @@ class Connection
             {
                 //NOTE: The RFCs don't allow ERR_NOSUCHCHANNEL as a response to TOPIC
                 version (BasicFixes)
-                {
-                    sendErrNoSuchChannel(channelName);
-                }
+                    sendNumeric!ERR_NOSUCHCHANNEL(channelName);
                 else
-                {
-                    send(Message(_server.name, "331", [
-                                nick, channelName, "No topic is set"
-                            ], true));
-                }
+                    sendNumeric!RPL_NOTOPIC(channelName);
             }
             else
             {
@@ -683,13 +660,13 @@ class Connection
             auto newTopic = message.parameters[1];
             if (!channels.canFind!(c => c.name.toIRCLower == channelName.toIRCLower))
             {
-                sendErrNotOnChannel(channelName);
+                sendNumeric!ERR_NOTONCHANNEL(channelName);
             }
             else if (channels.find!(c => c.name.toIRCLower == channelName.toIRCLower)
                     .map!(c => c.modes.canFind('t') && !c.memberModes[this].canFind('o'))
                     .array[0])
             {
-                sendErrChanopPrivsNeeded(channelName);
+                sendNumeric!ERR_CHANOPRIVSNEEDED(channelName);
             }
             else
             {
@@ -721,7 +698,7 @@ class Connection
                 }
                 else
                 {
-                    sendRplEndOfNames(channelName);
+                    sendNumeric!RPL_ENDOFNAMES(channelName);
                 }
             }
         }
@@ -750,7 +727,7 @@ class Connection
     {
         if (message.parameters.length < 2)
         {
-            sendErrNeedMoreParams(message.command);
+            sendNumeric!ERR_NEEDMOREPARAMS(message.command);
             return;
         }
 
@@ -758,7 +735,7 @@ class Connection
         auto targetUserRange = _server.findConnectionByNick(targetNick);
         if (targetUserRange.empty)
         {
-            sendErrNoSuchNick(targetNick);
+            sendNumeric!ERR_NOSUCHNICK(targetNick);
             return;
         }
         auto targetUser = targetUserRange[0];
@@ -769,11 +746,11 @@ class Connection
         {
             _server.invite(this, targetUser.nick, channelName);
 
-            sendRplInviting(channelName, targetUser.nick);
+            sendNumeric!RPL_INVITING(targetUser.nick, channelName);
 
             if (targetUser.modes.canFind('a'))
             {
-                sendRplAway(targetUser.nick, targetUser.awayMessage);
+                sendNumeric!RPL_AWAY(targetUser.nick, targetUser.awayMessage);
             }
         }
         else
@@ -781,28 +758,25 @@ class Connection
             auto channel = channelRange[0];
             if (!channel.members.canFind(this))
             {
-                sendErrNotOnChannel(channel.name);
+                sendNumeric!ERR_NOTONCHANNEL(channel.name);
             }
             else if (channel.members.canFind(targetUser))
             {
-                send(Message(_server.name, "443", [
-                            nick, targetUser.nick, channel.name,
-                            "is already on channel"
-                        ], true));
+                sendNumeric!ERR_USERONCHANNEL(targetUser.nick, channel.name);
             }
             else if (channel.modes.canFind('i') && !channel.memberModes[this].canFind('o'))
             {
-                sendErrChanopPrivsNeeded(channel.name);
+                sendNumeric!ERR_CHANOPRIVSNEEDED(channel.name);
             }
             else
             {
                 _server.invite(this, targetUser.nick, channel.name);
 
-                sendRplInviting(channel.name, targetUser.nick);
+                sendNumeric!RPL_INVITING(targetUser.nick, channel.name);
 
                 if (targetUser.modes.canFind('a'))
                 {
-                    sendRplAway(targetUser.nick, targetUser.awayMessage);
+                    sendNumeric!RPL_AWAY(targetUser.nick, targetUser.awayMessage);
                 }
             }
         }
@@ -837,7 +811,7 @@ class Connection
         }
         else if (_server.motd is null)
         {
-            send(Message(_server.name, "422", [nick, "MOTD File is missing"], true));
+            sendNumeric!ERR_NOMOTD();
             return;
         }
         _server.sendMotd(this);
@@ -862,7 +836,7 @@ class Connection
     {
         if (message.parameters.length < 1)
         {
-            sendErrNeedMoreParams(message.command);
+            sendNumeric!ERR_NEEDMOREPARAMS(message.command);
             return;
         }
 
@@ -878,7 +852,7 @@ class Connection
     {
         if (message.parameters.length < 1)
         {
-            sendErrNoNickGiven();
+            sendNumeric!ERR_NONICKNAMEGIVEN();
             return;
         }
         else if (message.parameters.length > 1)
@@ -892,34 +866,34 @@ class Connection
         if (!_server.canFindConnectionByNick(mask)
                 || !_server.findConnectionByNick(mask)[0].visibleTo(this))
         {
-            sendErrNoSuchNick(mask);
+            sendNumeric!ERR_NOSUCHNICK(mask);
         }
         else
         {
             _server.whois(this, mask);
         }
 
-        send(Message(_server.name, "318", [nick, mask, "End of WHOIS list"], true));
+        sendNumeric!RPL_ENDOFWHOIS(mask);
     }
 
     void onKill(Message message)
     {
         if (!isOperator)
         {
-            sendErrNoPrivileges();
+            sendNumeric!ERR_NOPRIVILEGES();
             return;
         }
 
         if (message.parameters.length < 2)
         {
-            sendErrNeedMoreParams(message.command);
+            sendNumeric!ERR_NEEDMOREPARAMS(message.command);
             return;
         }
 
         auto nick = message.parameters[0];
         if (!_server.canFindConnectionByNick(nick))
         {
-            sendErrNoSuchNick(nick);
+            sendNumeric!ERR_NOSUCHNICK(nick);
             return;
         }
 
@@ -932,7 +906,7 @@ class Connection
     {
         if (message.parameters.length < 2)
         {
-            sendErrNeedMoreParams(message.command);
+            sendNumeric!ERR_NEEDMOREPARAMS(message.command);
             return;
         }
 
@@ -942,7 +916,7 @@ class Connection
 
         if (channelList.length != 1 && channelList.length != userList.length)
         {
-            sendErrNeedMoreParams(message.command);
+            sendNumeric!ERR_NEEDMOREPARAMS(message.command);
             return;
         }
 
@@ -956,22 +930,22 @@ class Connection
 
             if (!_server.canFindChannelByName(channelName))
             {
-                sendErrNoSuchChannel(channelName);
+                sendNumeric!ERR_NOSUCHCHANNEL(channelName);
             }
             else
             {
                 auto channel = _server.findChannelByName(channelName)[0];
                 if (!channel.members.canFind(this))
                 {
-                    sendErrNotOnChannel(channelName);
+                    sendNumeric!ERR_NOTONCHANNEL(channelName);
                 }
                 else if (!channel.memberModes[this].canFind('o'))
                 {
-                    sendErrChanopPrivsNeeded(channelName);
+                    sendNumeric!ERR_CHANOPRIVSNEEDED(channelName);
                 }
                 else if (!channel.members.canFind!(m => m.nick.toIRCLower == nick.toIRCLower))
                 {
-                    sendErrUserNotInChannel(nick, channelName);
+                    sendNumeric!ERR_USERNOTINCHANNEL(nick, channelName);
                 }
                 else
                 {
@@ -985,7 +959,7 @@ class Connection
     {
         if (message.parameters.empty)
         {
-            sendErrNeedMoreParams(message.command);
+            sendNumeric!ERR_NEEDMOREPARAMS(message.command);
             return;
         }
 
@@ -1003,7 +977,7 @@ class Connection
             //NOTE: The RFCs don't allow ERR_NOSUCHNICK as a reponse to MODE
             version (BasicFixes)
             {
-                sendErrNoSuchNick(target);
+                sendNumeric!ERR_NOSUCHNICK(target);
             }
         }
     }
@@ -1018,30 +992,20 @@ class Connection
             version (BasicFixes)
             {
                 if (message.parameters.length > 1)
-                {
-                    send(Message(_server.name, "502", [
-                                nick, "Cannot change mode for other users"
-                            ], true));
-                }
+                    sendNumeric!ERR_USERSDONTMATCH();
                 else
-                {
-                    send(Message(_server.name, "502", [
-                                nick, "Cannot view mode of other users"
-                            ], true));
-                }
+                    sendNumeric!ERR_USERSDONTMATCH_ALT();
             }
             else
             {
-                send(Message(_server.name, "502", [
-                            nick, "Cannot change mode for other users"
-                        ], true));
+                sendNumeric!ERR_USERSDONTMATCH();
             }
             return;
         }
 
         if (message.parameters.length == 1)
         {
-            send(Message(_server.name, "221", [nick, "+" ~ modes.idup]));
+            sendNumeric!RPL_UMODEIS("+" ~ modes.idup);
         }
         else
         {
@@ -1060,9 +1024,7 @@ class Connection
                 }
 
                 if (modeString.length == 1)
-                {
                     continue;
-                }
 
                 auto changedModes = modeString[1 .. $];
                 foreach (mode; changedModes)
@@ -1090,9 +1052,7 @@ class Connection
                             //ignore
                             break;
                         default:
-                            send(Message(_server.name, "501", [
-                                        nick, "Unknown MODE flag"
-                                    ], true));
+                            sendNumeric!ERR_UMODEUNKNOWNFLAG();
                             break;
                     }
                 }
@@ -1108,7 +1068,7 @@ class Connection
             //NOTE: The RFCs don't allow ERR_NOSUCHCHANNEL as a response to MODE
             version (BasicFixes)
             {
-                sendErrNoSuchChannel(message.parameters[0]);
+                sendNumeric!ERR_NOSUCHCHANNEL(message.parameters[0]);
             }
             return;
         }
@@ -1117,13 +1077,9 @@ class Connection
         //NOTE: The RFCs are inconsistent on channel mode query syntax for mask list modes
         //      ('MODE #chan +b', but 'MODE #chan e' and 'MODE #chan I')
         version (BasicFixes)
-        {
             enum listQueryModes = ["+b", "+e", "+I", "e", "I"];
-        }
         else
-        {
             enum listQueryModes = ["+b", "e", "I"];
-        }
 
         if (message.parameters.length == 1)
         {
@@ -1149,7 +1105,7 @@ class Connection
         {
             if (!channel.memberModes[this].canFind('o'))
             {
-                sendErrChanopPrivsNeeded(channel.name);
+                sendNumeric!ERR_CHANOPRIVSNEEDED(channel.name);
                 return;
             }
 
@@ -1169,9 +1125,7 @@ class Connection
                 }
 
                 if (modeString.length == 1)
-                {
                     continue;
-                }
 
                 char[] processedModes;
                 string[] processedParameters;
@@ -1194,14 +1148,14 @@ class Connection
                             auto memberRange = _server.findConnectionByNick(memberNick);
                             if (memberRange.empty)
                             {
-                                sendErrNoSuchNick(memberNick);
+                                sendNumeric!ERR_NOSUCHNICK(memberNick);
                                 break Lforeach;
                             }
 
                             auto member = memberRange[0];
                             if (!channel.members.canFind(member))
                             {
-                                sendErrUserNotInChannel(memberNick, channel.name);
+                                sendNumeric!ERR_USERNOTINCHANNEL(memberNick, channel.name);
                                 break Lforeach;
                             }
 
@@ -1280,20 +1234,14 @@ class Connection
                             if (add)
                             {
                                 if (i + 1 == message.parameters.length)
-                                {
                                     break Lforeach;
-                                }
 
                                 auto limitString = message.parameters[++i];
                                 uint limit = 0;
                                 try
-                                {
                                     limit = limitString.to!uint;
-                                }
                                 catch (Throwable)
-                                {
                                     break Lforeach;
-                                }
 
                                 channel.setMemberLimit(limit);
 
@@ -1319,16 +1267,13 @@ class Connection
                                 success = channel.setMode(mode);
                             else
                                 success = channel.unsetMode(mode);
+
                             if (success)
-                            {
                                 processedModes ~= mode;
-                            }
                             break;
                         default:
-                            send(Message(_server.name, "472", [
-                                        nick, [mode],
-                                        "is unknown mode char to me for " ~ channel.name
-                                    ], true));
+                            sendNumeric!ERR_UNKNOWNMODE([mode],
+                                    "is unknown mode char to me for " ~ channel.name);
                             break;
                     }
                 }
@@ -1374,12 +1319,8 @@ class Connection
                 break;
         }
 
-        send(Message(_server.name, "219", [
-                    nick, [statsLetter].idup, "End of STATS report"
-                ], true));
+        sendNumeric!RPL_ENDOFSTATS([statsLetter].idup);
     }
-
-    //TODO: Refactor numeric replies
 
     void sendWhoReply(string channel, Connection user, string nickPrefix, uint hopCount)
     {
@@ -1388,95 +1329,8 @@ class Connection
             flags ~= "*";
         flags ~= nickPrefix;
 
-        send(Message(_server.name, "352", [
-                    nick, channel, user.user, user.hostname, user.servername,
-                    user.nick, flags, hopCount.to!string ~ " " ~ user.realname
-                ], true));
-    }
-
-    void sendRplAway(string target, string message)
-    {
-        send(Message(_server.name, "301", [nick, target, message], true));
-    }
-
-    void sendRplList(string channelName, ulong visibleCount, string topic)
-    {
-        send(Message(_server.name, "322", [
-                    nick, channelName, visibleCount.to!string, topic
-                ], true));
-    }
-
-    void sendRplListEnd()
-    {
-        send(Message(_server.name, "323", [nick, "End of LIST"], true));
-    }
-
-    void sendRplInviting(string channelName, string name)
-    {
-        //TODO: If errata are being ignored, send nick and channel name in reverse order
-        send(Message(_server.name, "341", [nick, name, channelName]));
-    }
-
-    void sendRplEndOfNames(string channelName)
-    {
-        send(Message(_server.name, "366", [
-                    nick, channelName, "End of NAMES list"
-                ], true));
-    }
-
-    void sendErrNoSuchNick(string name)
-    {
-        send(Message(_server.name, "401", [nick, name, "No such nick/channel"], true));
-    }
-
-    void sendErrNoSuchChannel(string name)
-    {
-        send(Message(_server.name, "403", [nick, name, "No such channel"], true));
-    }
-
-    void sendErrNoNickGiven()
-    {
-        send(Message(_server.name, "431", [nick, "No nickname given"], true));
-    }
-
-    void sendErrUserNotInChannel(string otherNick, string channel)
-    {
-        send(Message(_server.name, "441", [
-                    nick, otherNick, channel, "They aren't on that channel"
-                ], true));
-    }
-
-    void sendErrNotOnChannel(string channel)
-    {
-        send(Message(_server.name, "442", [
-                    nick, channel, "You're not on that channel"
-                ], true));
-    }
-
-    void sendErrNotRegistered()
-    {
-        send(Message(_server.name, "451", ["(You)", "You have not registered"], true));
-    }
-
-    void sendErrNeedMoreParams(string command)
-    {
-        send(Message(_server.name, "461", [
-                    nick, command, "Not enough parameters"
-                ], true));
-    }
-
-    void sendErrNoPrivileges()
-    {
-        send(Message(_server.name, "481", [
-                    nick, "Permission Denied- You're not an IRC operator"
-                ], true));
-    }
-
-    void sendErrChanopPrivsNeeded(string channel)
-    {
-        send(Message(_server.name, "482", [
-                    nick, channel, "You're not channel operator"
-                ], true));
+        sendNumeric!RPL_WHOREPLY(channel, user.user, user.hostname, user.servername,
+                user.nick, flags, hopCount.to!string ~ " " ~ user.realname);
     }
 
     void notImplemented(string description)
@@ -1500,30 +1354,19 @@ class Connection
         enum availableUserModes = "aiwroOs";
         enum availableChannelModes = "OovaimnqpsrtklbeI";
 
-        send(Message(_server.name, "001", [
-                    nick, "Welcome", "to", "the", "Internet", "Relay", "Network",
-                    prefix
-                ], false));
-        send(Message(_server.name, "002", [
-                    nick, "Your", "host", "is", _server.name ~ ",", "running",
-                    "version", _server.versionString
-                ], false));
-        send(Message(_server.name, "003", [
-                    nick, "This", "server", "was", "created", buildDate
-                ], false));
-        send(Message(_server.name, "004", [
-                    nick, _server.name, _server.versionString,
-                    availableUserModes, availableChannelModes
-                ], false));
+        sendNumeric!RPL_WELCOME("Welcome", "to", "the", "Internet", "Relay", "Network", prefix);
+        sendNumeric!RPL_YOURHOST("Your", "host", "is", _server.name ~ ",",
+                "running", "version", _server.versionString);
+        sendNumeric!RPL_CREATED("This", "server", "was", "created", buildDate);
+        sendNumeric!RPL_MYINFO(_server.name, _server.versionString,
+                availableUserModes, availableChannelModes);
     }
 
     void onIncorrectPassword()
     {
         //NOTE: The RFCs don't allow ERR_PASSWDMISMATCH as a response to NICK/USER
         version (BasicFixes)
-        {
-            send(Message(_server.name, "464", [nick, "Password incorrect"], true));
-        }
+            sendNumeric!ERR_PASSWDMISMATCH();
 
         //NOTE: The RFCs don't actually specify what should happen here
         closeConnection();
@@ -1552,13 +1395,10 @@ class Connection
         char[] modes;
 
         if (mask & 0b100)
-        {
             modes ~= 'w';
-        }
+
         if (mask & 0b1000)
-        {
             modes ~= 'i';
-        }
 
         return modes;
     }
