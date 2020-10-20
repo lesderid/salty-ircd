@@ -332,7 +332,7 @@ class Connection
         {
             sendWelcome();
         }
-        else if (registrationAttempted)
+        else if (!wasRegistered && registrationAttempted)
         {
             onIncorrectPassword();
         }

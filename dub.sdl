@@ -11,7 +11,7 @@ preBuildCommands "./generate-version-info.fish"
 versions "VibeDefaultMain"
 targetPath "out"
 
-configuration "application" {
+configuration "compliant" {
 }
 
 configuration "modern" {
