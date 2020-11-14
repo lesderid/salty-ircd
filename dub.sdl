@@ -15,5 +15,5 @@ configuration "compliant" {
 }
 
 configuration "modern" {
-    versions "BasicFixes" "SupportTLS"
+    versions "Modern"
 }
