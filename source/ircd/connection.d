@@ -11,6 +11,7 @@ import std.datetime;
 
 import vibe.core.core;
 import vibe.core.net;
+import vibe.core.stream : IOMode;
 import vibe.stream.operations : readLine;
 
 import ircd.versionInfo;
@@ -122,7 +123,15 @@ class Connection
     {
         string messageString = message.toString;
         writeln("S> " ~ messageString);
-        _connection.write(messageString ~ "\r\n");
+
+        auto messageBytes = cast(const(ubyte)[]) (messageString ~ "\r\n");
+        auto bytesSent = _connection.write(messageBytes, IOMode.once);
+
+        if (bytesSent < 0)
+        {
+            writeln("client disconnected (write error)");
+            closeConnection();
+        }
     }
 
     void sendNumeric(alias numeric)(string[] params...)
@@ -293,7 +302,7 @@ class Connection
             _server.updateCommandStatistics(message);
         }
 
-        onDisconnect();
+        closeConnection();
     }
 
     void onNick(Message message)
