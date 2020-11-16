@@ -42,6 +42,9 @@ class Connection
 
     string pass = null;
 
+    debug (ProxyV1)
+    bool proxy;
+
     @property auto channels()
     {
         return _server.channels.filter!(c => c.members.canFind(this));
@@ -181,6 +184,13 @@ class Connection
                 //TODO: The actual Throwable could be useful?
                 connected = _connection.connected;
                 continue;
+            }
+
+            debug (ProxyV1)
+            if (message.command == "PROXY")
+            {
+                proxy = true;
+                hostname = getHost(message.parameters[1]);
             }
 
             //NOTE: The RFCs don't specify whether commands are case-sensitive
@@ -367,7 +377,8 @@ class Connection
         user = message.parameters[0];
         modes = modeMaskToModes(message.parameters[1]);
         realname = message.parameters[3];
-        hostname = getHost();
+        debug (ProxyV1) {}
+        else hostname = getHost();
 
         if (!wasRegistered && registered)
         {
@@ -1381,9 +1392,11 @@ class Connection
         closeConnection();
     }
 
-    string getHost()
+    string getHost(string addressString = null)
     {
-        auto address = parseAddress(_connection.remoteAddress.toAddressString);
+        auto address = parseAddress(addressString != null ?
+                                    addressString :
+                                    _connection.remoteAddress.toAddressString);
         auto hostname = address.toHostNameString;
         if (hostname is null)
         {
